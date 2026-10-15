@@ -2,10 +2,12 @@ import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 interface UiState {
   sidebarOpen: boolean;
+  selectedConversationId: string | null;
 }
 
 const initialState: UiState = {
   sidebarOpen: true,
+  selectedConversationId: null,
 };
 
 const uiSlice = createSlice({
@@ -18,8 +20,11 @@ const uiSlice = createSlice({
     toggleSidebar(state) {
       state.sidebarOpen = !state.sidebarOpen;
     },
+    selectConversation(state, action: PayloadAction<string | null>) {
+      state.selectedConversationId = action.payload;
+    },
   },
 });
 
-export const { setSidebarOpen, toggleSidebar } = uiSlice.actions;
+export const { setSidebarOpen, toggleSidebar, selectConversation } = uiSlice.actions;
 export default uiSlice.reducer;

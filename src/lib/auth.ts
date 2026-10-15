@@ -45,9 +45,9 @@ export function buildGoogleAuthUrl(
   return url.toString();
 }
 
-export async function getCurrentUser(): Promise<AuthUser | null> {
+export async function getCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> {
   try {
-    const response = await apiClient.get<{ data: { user: AuthUserResponse } }>("/auth/me");
+    const response = await apiClient.get<{ data: { user: AuthUserResponse } }>("/auth/me", { signal });
     return normalizeAuthUser(response.data.data.user);
   } catch (error) {
     if (typeof error === "object" && error && "response" in error) {
