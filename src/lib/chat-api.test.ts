@@ -17,15 +17,18 @@ const signature: AvatarUploadSignature = {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("avatar upload client", () => {
-  it("maps the browser JPEG MIME type to the signed JPG format", async () => {
+  it.each([
+    [signature.publicId, signature.publicId],
+    [`${signature.folder}/${signature.publicId}`, `${signature.folder}/${signature.publicId}`],
+  ])("accepts Cloudinary public ID %s and returns it unchanged", async (cloudinaryPublicId, expectedPublicId) => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ public_id: signature.publicId }),
+      json: async () => ({ public_id: cloudinaryPublicId }),
     });
     vi.stubGlobal("fetch", fetchMock);
     const file = new File(["image"], "avatar.jpg", { type: "image/jpeg" });
 
-    await expect(uploadAvatarImage(file, signature)).resolves.toBe(signature.publicId);
+    await expect(uploadAvatarImage(file, signature)).resolves.toBe(expectedPublicId);
 
     const formData = fetchMock.mock.calls[0][1]?.body as FormData;
     expect(formData.get("allowed_formats")).toBe("jpg,png,webp");

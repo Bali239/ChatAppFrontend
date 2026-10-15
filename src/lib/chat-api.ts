@@ -229,7 +229,11 @@ export async function uploadAvatarImage(
 
   const response = await fetch(signature.uploadUrl, { method: 'POST', body: formData, signal });
   const payload = await response.json() as { public_id?: string };
-  if (!response.ok || payload.public_id !== signature.publicId) {
+  const expectedFolderPublicId = `${signature.folder}/${signature.publicId}`;
+  if (
+    !response.ok ||
+    (payload.public_id !== signature.publicId && payload.public_id !== expectedFolderPublicId)
+  ) {
     throw new Error('Avatar upload failed. Try another image.');
   }
   return payload.public_id;
