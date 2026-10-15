@@ -46,7 +46,7 @@ function SectionState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="px-4 py-6 text-center text-sm text-[#67776e]">
+    <div className="px-4 py-4 text-center text-sm text-[#67776e] sm:py-6">
       <p>{label}</p>
       {onRetry ? (
         <button type="button" onClick={onRetry} className="mt-2 font-semibold text-[#287254] underline underline-offset-4">
@@ -62,7 +62,7 @@ function PersonRow({ user, onSelect }: { user: PublicUser; onSelect: (user: Publ
     <button
       type="button"
       onClick={() => onSelect(user)}
-      className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[#f2f6f3] focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#287254]"
+      className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-[#f2f6f3] focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#287254] sm:py-3"
     >
       <Avatar src={user.avatarUrl} name={user.displayName} online={user.isOnline} />
       <span className="min-w-0 flex-1">
@@ -95,7 +95,7 @@ function ConversationRow({
       type="button"
       onClick={() => onSelect(conversation)}
       aria-current={selected ? "page" : undefined}
-      className={`flex w-full items-center gap-3 py-3 text-left transition focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#287254] ${selected ? "bg-[#e9f2ec] border-l-3 border-[#287254] pl-3.5 pr-4" : "hover:bg-[#f2f6f3] px-4"}`}
+      className={`flex w-full items-center gap-3 py-2.5 text-left transition focus-visible:outline-2 focus-visible:outline-inset focus-visible:outline-[#287254] sm:py-3 ${selected ? "bg-[#e9f2ec] border-l-3 border-[#287254] pl-3.5 pr-4" : "hover:bg-[#f2f6f3] px-4"}`}
     >
       <Avatar
         src={conversation.participant.avatarUrl}
@@ -199,9 +199,9 @@ export function ChatSidebar({
 
   return (
     <aside className="flex h-full min-h-0 w-full flex-col border-r border-[#dce7df] bg-[#fbfdfb] shadow-[8px_0_28px_rgba(22,54,38,0.08)] lg:flex-none lg:w-89 lg:shadow-none xl:w-95">
-      <header className="flex h-19 shrink-0 items-center justify-between border-b border-[#e3ebe5] px-5">
-        <div className="flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-xl bg-[#287254] text-white">
+      <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#e3ebe5] px-4 sm:h-19 sm:px-5">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <span className="grid size-8 place-items-center rounded-xl bg-[#287254] text-white sm:size-9">
             <MessageCircle size={18} aria-hidden="true" />
           </span>
           <div>
@@ -212,7 +212,7 @@ export function ChatSidebar({
         <span className="rounded-full border border-[#dce7df] bg-white px-2.5 py-1 text-[10px] font-semibold text-[#66766d]">DIRECT</span>
       </header>
 
-      <div className="px-4 pt-4 pb-3">
+      <div className="px-3 pt-3 pb-2 sm:px-4 sm:pt-4 sm:pb-3">
         <label htmlFor="people-search" className="sr-only">Search people by name</label>
         <div className="relative">
           <Search size={17} aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[#728178]" />
@@ -224,14 +224,14 @@ export function ChatSidebar({
             onBlur={() => setSearchFocused(false)}
             placeholder="Search people"
             autoComplete="off"
-            className="h-11 w-full border border-[#dce7df] bg-white pr-10 pl-10 text-sm text-[#20352b] outline-none transition placeholder:text-[#9aa69f] focus:border-[#4b8a6d] focus:ring-2 focus:ring-[#4b8a6d]/15"
+            className="h-10 w-full border border-[#dce7df] bg-white pr-10 pl-10 text-sm text-[#20352b] outline-none transition placeholder:text-[#9aa69f] focus:border-[#4b8a6d] focus:ring-2 focus:ring-[#4b8a6d]/15 sm:h-11"
           />
           {searchInput ? (
             <button
               type="button"
               aria-label="Clear search"
               onClick={() => setSearchInput("")}
-              className="absolute top-1/2 right-2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-full text-[#748279] hover:bg-[#eff4f0]"
+              className="absolute top-1/2 right-1 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-[#748279] hover:bg-[#eff4f0] sm:right-2 sm:size-7"
             >
               <span aria-hidden="true">×</span>
             </button>
@@ -296,7 +296,7 @@ export function ChatSidebar({
                 />
               ))
             ) : (
-              <div className="flex flex-col items-center gap-3 px-5 py-8 text-center text-sm text-[#738279]">
+              <div className="flex flex-col items-center gap-3 px-5 py-6 text-center text-sm text-[#738279] sm:py-8">
                 <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[#edf3ee] text-[#588069]">
                   <Users size={18} aria-hidden="true" />
                 </span>
@@ -308,7 +308,7 @@ export function ChatSidebar({
         </section>
       )}
 
-      <footer className="flex h-16.5 shrink-0 items-center gap-3 border-t border-[#e3ebe5] px-4">
+      <footer className="flex h-15 shrink-0 items-center gap-2.5 border-t border-[#e3ebe5] px-3 sm:h-16.5 sm:gap-3 sm:px-4">
         <Avatar src={currentUser.avatarUrl} name={currentUser.name} size="sm" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold text-[#20352b]">{currentUser.name}</span>

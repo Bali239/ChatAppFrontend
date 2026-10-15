@@ -416,17 +416,17 @@ export function ChatConversation({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-17 shrink-0 items-center justify-between border-b border-[#dce7df] bg-white/95 px-3 sm:px-5">
-        <div className="flex min-w-0 items-center gap-2">
+      <header className="flex h-15 shrink-0 items-center justify-between border-b border-[#dce7df] bg-white/95 px-2.5 sm:h-17 sm:px-5">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <button
             type="button"
             aria-label="Back to conversations"
             onClick={onBack}
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-[#65766c] transition hover:bg-[#eff4f0] focus-visible:outline-2 focus-visible:outline-[#287254] lg:hidden"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-[#65766c] transition hover:bg-[#eff4f0] focus-visible:outline-2 focus-visible:outline-[#287254] lg:hidden sm:size-9"
           >
             <ArrowLeft size={19} aria-hidden="true" />
           </button>
-          <button type="button" onClick={onOpenProfile} className="flex min-w-0 items-center gap-3 text-left">
+          <button type="button" onClick={onOpenProfile} className="flex min-w-0 items-center gap-2 text-left sm:gap-3">
             <Avatar src={conversation.participant.avatarUrl} name={conversation.participant.displayName} online={conversation.participant.isOnline} />
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold text-[#20352b]">{conversation.participant.displayName}</span>
@@ -449,7 +449,7 @@ export function ChatConversation({
             aria-label="Clear your chat history"
             title="Clear your chat history"
             onClick={() => setIsClearDialogOpen(true)}
-            className="inline-flex size-9 items-center justify-center rounded-full text-[#6e7d74] transition hover:bg-[#fff2ef] hover:text-[#a44d40] focus-visible:outline-2 focus-visible:outline-[#287254]"
+            className="inline-flex size-10 items-center justify-center rounded-full text-[#6e7d74] transition hover:bg-[#fff2ef] hover:text-[#a44d40] focus-visible:outline-2 focus-visible:outline-[#287254] sm:size-9"
           >
             <Trash2 size={17} aria-hidden="true" />
           </button>
@@ -459,7 +459,7 @@ export function ChatConversation({
       <div
         ref={scrollRef}
         onScroll={handleHistoryScroll}
-        className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-5 sm:px-6"
+        className="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3 sm:px-6 sm:py-5"
         aria-label={`Messages with ${conversation.participant.displayName}`}
         role="log"
         aria-live="polite"
@@ -499,12 +499,12 @@ export function ChatConversation({
             <p className="mt-1 text-sm leading-6 text-[#75847b]">Send a message to start your conversation.</p>
           </div>
         ) : (
-          <div className="mt-auto flex flex-col gap-2.5">
+          <div className="mt-auto flex flex-col gap-2 sm:gap-2.5">
             {messages.map((message) => {
               const ownMessage = message.senderId === currentUser.id;
               return (
                 <article key={message.id} className={`message-enter flex ${ownMessage ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[min(82%,620px)] px-3.5 py-2.5 shadow-[0_1px_2px_rgba(20,45,32,0.06)] sm:max-w-[72%] ${ownMessage ? "bg-[#dceee1] text-[#24392d]" : "border border-[#e1eae3] bg-white text-[#283a30]"}`}>
+                  <div className={`max-w-[min(82%,620px)] px-3 py-2 shadow-[0_1px_2px_rgba(20,45,32,0.06)] sm:max-w-[72%] sm:px-3.5 sm:py-2.5 ${ownMessage ? "bg-[#dceee1] text-[#24392d]" : "border border-[#e1eae3] bg-white text-[#283a30]"}`}>
                     <p className="whitespace-pre-wrap wrap-break-word text-[14px] leading-[1.55]">{message.content}</p>
                     <div className="mt-1.5 flex items-center justify-end gap-1.5 text-[10px] text-[#738178]">
                       <time dateTime={message.createdAt}>{format(new Date(message.createdAt), "p")}</time>
@@ -516,7 +516,7 @@ export function ChatConversation({
             })}
             {pendingVisible.map((pending) => (
               <article key={pending.clientMessageId} className="flex justify-end">
-                <div className="max-w-[min(82%,620px)] bg-[#dceee1] px-3.5 py-2.5 text-[#24392d] opacity-80 sm:max-w-[72%]">
+                <div className="max-w-[min(82%,620px)] bg-[#dceee1] px-3 py-2 text-[#24392d] opacity-80 sm:max-w-[72%] sm:px-3.5 sm:py-2.5">
                   <p className="whitespace-pre-wrap wrap-break-word text-[14px] leading-[1.55]">{pending.content}</p>
                   <div className="mt-1.5 flex items-center justify-end gap-2 text-[10px] text-[#738178]">
                     <time dateTime={pending.createdAt}>{format(new Date(pending.createdAt), "p")}</time>
@@ -551,8 +551,8 @@ export function ChatConversation({
         ) : null}
       </div>
 
-      <form onSubmit={submitMessage} className="shrink-0 border-t border-[#dce7df] bg-white px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">
-        <div className="flex items-end gap-2 border border-[#dce7df] bg-[#fbfdfb] p-1.5 focus-within:border-[#75a185] focus-within:ring-2 focus-within:ring-[#4b8a6d]/10">
+      <form onSubmit={submitMessage} className="shrink-0 border-t border-[#dce7df] bg-white px-2.5 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="flex items-end gap-2 border border-[#dce7df] bg-[#fbfdfb] p-1 focus-within:border-[#75a185] focus-within:ring-2 focus-within:ring-[#4b8a6d]/10 sm:p-1.5">
           <label htmlFor="message-composer" className="sr-only">Write a message</label>
           <textarea
             ref={textareaRef}
@@ -568,7 +568,7 @@ export function ChatConversation({
             maxLength={5_000}
             placeholder="Write a message…"
             style={{ overflow: "hidden" }}
-            className="max-h-36 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-sm leading-5 outline-none placeholder:text-[#96a29a]"
+            className="max-h-24 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-sm leading-5 outline-none placeholder:text-[#96a29a] sm:max-h-36"
           />
           <span className="hidden self-center px-1 text-[10px] text-[#8c9991] sm:block">{draft.length}/5000</span>
           <button
@@ -580,7 +580,7 @@ export function ChatConversation({
             <Send size={17} aria-hidden="true" />
           </button>
         </div>
-        <p className="mt-1.5 px-1 text-[10px] text-[#8a978f]">Enter to send · Shift+Enter for a new line</p>
+        <p className="mt-1 px-1 text-[10px] text-[#8a978f] sm:mt-1.5">Enter to send · Shift+Enter for a new line</p>
       </form>
 
       <dialog

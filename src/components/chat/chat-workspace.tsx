@@ -191,7 +191,7 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
 
   return (
     <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[#f3f7f3] text-[#20352b]">
-      <header className="z-10 flex h-14 shrink-0 items-center justify-between border-b border-[#dce7df] bg-white px-4 sm:px-6">
+      <header className="z-10 flex h-13 shrink-0 items-center justify-between border-b border-[#dce7df] bg-white px-3.5 sm:h-14 sm:px-6">
         <div className="flex items-center gap-2.5">
           <button
             type="button"
@@ -199,7 +199,7 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
             aria-controls="chat-sidebar"
             aria-expanded={sidebarOpen}
             onClick={() => dispatch(toggleSidebar())}
-            className="inline-flex size-9 items-center justify-center rounded-lg text-[#65766c] transition hover:bg-[#eff4f0] lg:hidden"
+            className="inline-flex size-10 items-center justify-center rounded-lg text-[#65766c] transition hover:bg-[#eff4f0] lg:hidden sm:size-9"
           >
             <Menu size={20} aria-hidden="true" />
           </button>
