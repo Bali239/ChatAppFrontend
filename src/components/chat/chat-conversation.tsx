@@ -580,7 +580,7 @@ export function ChatConversation({
             <Send size={17} aria-hidden="true" />
           </button>
         </div>
-        <p className="mt-1 px-1 text-[10px] text-[#8a978f] sm:mt-1.5">Enter to send · Shift+Enter for a new line</p>
+        <p className="mt-1 px-1 text-[10px] text-[#8a978f] sm:mt-1.5 text-center">Enter to send · Shift+Enter for a new line</p>
       </form>
 
       <dialog
