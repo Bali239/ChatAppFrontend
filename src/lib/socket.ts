@@ -1,4 +1,5 @@
 import { io, type Socket } from "socket.io-client";
+import { resolveSocketUrl } from "./backend-config";
 
 let socket: Socket | null = null;
 
@@ -7,14 +8,7 @@ export function connectSocket(): Socket {
     throw new Error("The socket client can only be started in a browser.");
   }
 
-  const url =
-    process.env.NEXT_PUBLIC_SOCKET_URL ?? process.env.NEXT_PUBLIC_API_URL;
-
-  if (!url) {
-    throw new Error(
-      "Set NEXT_PUBLIC_SOCKET_URL or NEXT_PUBLIC_API_URL before connecting.",
-    );
-  }
+  const url = resolveSocketUrl();
 
   if (!socket) {
     socket = io(url, {
