@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, LogOut, MessageCircle, Settings2, Wifi, WifiOff } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { ChevronDown, LogOut, Menu, MessageCircle, Settings2, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
 import { ChatConversation } from "@/components/chat/chat-conversation";
 import { ProfileDialog } from "@/components/chat/profile-dialog";
 import { ProfileSettingsDialog } from "@/components/chat/profile-settings-dialog";
 import { Avatar } from "@/components/chat/avatar";
-import { createDirectConversation, chatQueryKeys, type ConversationRecord, type PublicUser } from "@/lib/chat-api";
-import { selectConversation } from "@/lib/redux/ui-slice";
+import { createDirectConversation, chatQueryKeys, type ConversationPage, type ConversationRecord, type PublicUser } from "@/lib/chat-api";
+import { selectConversation, setSidebarOpen, toggleSidebar } from "@/lib/redux/ui-slice";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
 import type { AuthUser } from "@/lib/auth";
@@ -23,6 +23,7 @@ interface ChatWorkspaceProps {
 export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
   const dispatch = useAppDispatch();
   const selectedConversationId = useAppSelector((state) => state.ui.selectedConversationId);
+  const sidebarOpen = useAppSelector((state) => state.ui.sidebarOpen);
   const queryClient = useQueryClient();
   const [selectedConversation, setSelectedConversation] = useState<ConversationRecord | null>(null);
   const [profileUser, setProfileUser] = useState<PublicUser | null>(null);
@@ -30,6 +31,30 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isOpeningConversation, setIsOpeningConversation] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isDropdownOpen]);
+
+  // Close dropdown on Escape key
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") setIsDropdownOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isDropdownOpen]);
 
   useEffect(() => {
     let socket: ReturnType<typeof connectSocket>;
@@ -87,6 +112,24 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
   const handleSelectConversation = (conversation: ConversationRecord) => {
     dispatch(selectConversation(conversation.id));
     setSelectedConversation(conversation);
+    dispatch(setSidebarOpen(false)); // auto-close sidebar on mobile
+
+    // Optimistically clear unread badge in the conversation list cache
+    queryClient.setQueryData<InfiniteData<ConversationPage, string | null>>(
+      chatQueryKeys.conversations,
+      (current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          pages: current.pages.map((page) => ({
+            ...page,
+            conversations: page.conversations.map((c) =>
+              c.id === conversation.id ? { ...c, unreadCount: 0 } : c
+            ),
+          })),
+        };
+      }
+    );
   };
 
   const handleMessagePerson = async (person: PublicUser) => {
@@ -106,10 +149,11 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
       dispatch(selectConversation(conversationId));
       setSelectedConversation(conversation);
       setProfileUser(null);
+      dispatch(setSidebarOpen(false)); // auto-close sidebar on mobile
       await queryClient.invalidateQueries({ queryKey: chatQueryKeys.conversations });
       toast.success("Conversation opened");
     } catch {
-      toast.error("Couldn’t open this conversation. Please try again.");
+      toast.error("Couldn't open this conversation. Please try again.");
     } finally {
       setIsOpeningConversation(false);
     }
@@ -123,7 +167,7 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
       dispatch(selectConversation(null));
       setSelectedConversation(null);
     } catch {
-      toast.error("Couldn’t sign out. Please try again.");
+      toast.error("Couldn't sign out. Please try again.");
     } finally {
       setIsSigningOut(false);
     }
@@ -132,12 +176,26 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
   const handleBackToPeople = () => {
     dispatch(selectConversation(null));
     setSelectedConversation(null);
+    dispatch(setSidebarOpen(true));
   };
+
+  // Compute sidebar visibility:
+  // On large screens: always show sidebar
+  // On small screens: show sidebar if sidebarOpen AND no conversation selected
+  const showSidebar = sidebarOpen || !selectedConversationId;
 
   return (
     <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[#f3f7f3] text-[#20352b]">
       <header className="z-10 flex h-14 shrink-0 items-center justify-between border-b border-[#dce7df] bg-white px-4 sm:px-6">
         <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            aria-label="Toggle sidebar"
+            onClick={() => dispatch(toggleSidebar())}
+            className="inline-flex size-9 items-center justify-center rounded-lg text-[#65766c] transition hover:bg-[#eff4f0] lg:hidden"
+          >
+            <Menu size={20} aria-hidden="true" />
+          </button>
           <span className="grid size-8 place-items-center rounded-lg bg-[#287254] text-white">
             <MessageCircle size={16} aria-hidden="true" />
           </span>
@@ -150,37 +208,45 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
             {isConnected ? <Wifi size={14} aria-hidden="true" /> : <WifiOff size={14} aria-hidden="true" />}
             {isConnected ? "Connected" : "Reconnecting"}
           </span>
-          <details className="relative">
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full py-1 pl-1 pr-2 outline-none transition hover:bg-[#f2f6f3] focus-visible:ring-2 focus-visible:ring-[#4b8a6d]">
+          <div ref={dropdownRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setIsDropdownOpen((o) => !o)}
+              aria-expanded={isDropdownOpen}
+              aria-haspopup="true"
+              className="flex cursor-pointer items-center gap-2 rounded-full py-1 pl-1 pr-2 outline-none transition hover:bg-[#f2f6f3] focus-visible:ring-2 focus-visible:ring-[#4b8a6d]"
+            >
               <Avatar src={currentUser.avatarUrl} name={currentUser.name} size="sm" />
               <span className="hidden max-w-36 truncate text-sm font-medium sm:block">{currentUser.name}</span>
-              <ChevronDown size={14} className="text-[#718078]" aria-hidden="true" />
-            </summary>
-            <div className="absolute top-full right-0 mt-2 w-56 border border-[#dce7df] bg-white p-2 shadow-[0_12px_36px_rgba(22,54,38,0.12)]">
-              <div className="border-b border-[#e7eee8] px-3 py-2">
-                <p className="truncate text-sm font-semibold">{currentUser.name}</p>
-                <p className="truncate text-xs text-[#78877e]">{currentUser.email}</p>
+              <ChevronDown size={14} className={`text-[#718078] transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+            </button>
+            {isDropdownOpen ? (
+              <div className="absolute top-full right-0 mt-2 w-56 border border-[#dce7df] bg-white p-2 shadow-[0_12px_36px_rgba(22,54,38,0.12)]">
+                <div className="border-b border-[#e7eee8] px-3 py-2">
+                  <p className="truncate text-sm font-semibold">{currentUser.name}</p>
+                  <p className="truncate text-xs text-[#78877e]">{currentUser.email}</p>
+                </div>
+                <button type="button" onClick={() => { setIsProfileSettingsOpen(true); setIsDropdownOpen(false); }} className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-[#3f5949] transition hover:bg-[#f2f7f3]">
+                  <Settings2 size={16} aria-hidden="true" />
+                  Profile settings
+                </button>
+                <button
+                  type="button"
+                  disabled={isSigningOut}
+                  onClick={() => { void handleSignOut(); setIsDropdownOpen(false); }}
+                  className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-[#9d4e42] transition hover:bg-[#fff2ef] disabled:opacity-60"
+                >
+                  <LogOut size={16} aria-hidden="true" />
+                  {isSigningOut ? "Signing out…" : "Sign out"}
+                </button>
               </div>
-              <button type="button" onClick={() => setIsProfileSettingsOpen(true)} className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-[#3f5949] transition hover:bg-[#f2f7f3]">
-                <Settings2 size={16} aria-hidden="true" />
-                Profile settings
-              </button>
-              <button
-                type="button"
-                disabled={isSigningOut}
-                onClick={() => void handleSignOut()}
-                className="flex h-10 w-full items-center gap-2 px-3 text-left text-sm text-[#9d4e42] transition hover:bg-[#fff2ef] disabled:opacity-60"
-              >
-                <LogOut size={16} aria-hidden="true" />
-                {isSigningOut ? "Signing out…" : "Sign out"}
-              </button>
-            </div>
-          </details>
+            ) : null}
+          </div>
         </div>
       </header>
 
       <div className="relative flex min-h-0 flex-1">
-        <div className={`${selectedConversationId ? "hidden lg:flex" : "flex"} min-h-0 w-full lg:w-auto`}>
+        <div className={`${showSidebar ? "flex" : "hidden"} min-h-0 w-full lg:flex lg:w-auto`}>
           <ChatSidebar
             currentUser={currentUser}
             selectedConversationId={selectedConversationId}

@@ -94,6 +94,9 @@ export function ProfileSettingsDialog({ open, currentUser, onClose, onSaved }: P
         event.preventDefault();
         onClose();
       }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
     >
       <form onSubmit={(event) => void saveProfile(event)}>
         <header className="flex items-center justify-between border-b border-[#e6ede7] px-6 py-4">

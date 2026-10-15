@@ -89,6 +89,7 @@ export function ChatConversation({
   const firstLoadedConversationRef = useRef<string | null>(null);
   const sendingIdsRef = useRef(new Set<string>());
   const deliveredMessageIdsRef = useRef(new Set<string>());
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState("");
   const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
   const [isClearing, setIsClearing] = useState(false);
@@ -252,6 +253,14 @@ export function ChatConversation({
       setNewMessageCount(0);
     }
   }, [messages.length, pendingVisible.length, historyQuery.isFetchingNextPage]);
+
+  // Auto-resize textarea to fit content (up to ~6 lines)
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 144)}px`;
+  }, [draft]);
 
   useEffect(() => {
     if (!historyIsSuccess || !historyPages) return;
@@ -422,7 +431,14 @@ export function ChatConversation({
             <span className="min-w-0">
               <span className="block truncate text-sm font-semibold text-[#20352b]">{conversation.participant.displayName}</span>
               <span className="mt-0.5 block text-xs text-[#748279]">
-                {typingUserId ? "typing…" : conversation.participant.isOnline ? "Online" : "Offline"}
+                {typingUserId ? (
+                  <span className="inline-flex items-center gap-0.5">
+                    <span>typing</span>
+                    <span className="typing-dot inline-block size-1 rounded-full bg-current" />
+                    <span className="typing-dot inline-block size-1 rounded-full bg-current" />
+                    <span className="typing-dot inline-block size-1 rounded-full bg-current" />
+                  </span>
+                ) : conversation.participant.isOnline ? "Online" : "Offline"}
               </span>
             </span>
           </button>
@@ -487,7 +503,7 @@ export function ChatConversation({
             {messages.map((message) => {
               const ownMessage = message.senderId === currentUser.id;
               return (
-                <article key={message.id} className={`flex ${ownMessage ? "justify-end" : "justify-start"}`}>
+                <article key={message.id} className={`message-enter flex ${ownMessage ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[min(82%,620px)] px-3.5 py-2.5 shadow-[0_1px_2px_rgba(20,45,32,0.06)] sm:max-w-[72%] ${ownMessage ? "bg-[#dceee1] text-[#24392d]" : "border border-[#e1eae3] bg-white text-[#283a30]"}`}>
                     <p className="whitespace-pre-wrap wrap-break-word text-[14px] leading-[1.55]">{message.content}</p>
                     <div className="mt-1.5 flex items-center justify-end gap-1.5 text-[10px] text-[#738178]">
@@ -539,6 +555,7 @@ export function ChatConversation({
         <div className="flex items-end gap-2 border border-[#dce7df] bg-[#fbfdfb] p-1.5 focus-within:border-[#75a185] focus-within:ring-2 focus-within:ring-[#4b8a6d]/10">
           <label htmlFor="message-composer" className="sr-only">Write a message</label>
           <textarea
+            ref={textareaRef}
             id="message-composer"
             value={draft}
             onChange={(event) => {
@@ -550,7 +567,8 @@ export function ChatConversation({
             rows={1}
             maxLength={5_000}
             placeholder="Write a message…"
-            className="max-h-36 min-h-10 flex-1 resize-y bg-transparent px-2.5 py-2 text-sm leading-5 outline-none placeholder:text-[#96a29a]"
+            style={{ overflow: "hidden" }}
+            className="max-h-36 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-sm leading-5 outline-none placeholder:text-[#96a29a]"
           />
           <span className="hidden self-center px-1 text-[10px] text-[#8c9991] sm:block">{draft.length}/5000</span>
           <button
