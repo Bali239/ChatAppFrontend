@@ -1,113 +1,115 @@
-"use client";
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { ArrowRight, Check, MessageCircle, Search, ShieldCheck, Users } from "lucide-react";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, LoaderCircle, MessageCircle } from "lucide-react";
-import { ChatWorkspace } from "@/components/chat/chat-workspace";
-import { chatQueryKeys } from "@/lib/chat-api";
-import { buildGoogleAuthUrl, getCurrentUser, logoutUser } from "@/lib/auth";
-import { disconnectSocket } from "@/lib/socket";
+export const metadata: Metadata = {
+  title: "ChatApp | Make room for a good conversation",
+  description: "A quieter space for private conversations with your people.",
+};
 
 export default function Home() {
-  const queryClient = useQueryClient();
-  const currentUserQuery = useQuery({
-    queryKey: chatQueryKeys.currentUser,
-    queryFn: ({ signal }) => getCurrentUser(signal),
-    retry: false,
-  });
-
-  const handleLogin = () => {
-    window.location.assign(buildGoogleAuthUrl(window.location.href));
-  };
-
-  const handleLogout = async () => {
-    await logoutUser();
-    disconnectSocket();
-    queryClient.setQueryData(chatQueryKeys.currentUser, null);
-    await queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== "auth" });
-  };
-
-  if (currentUserQuery.isPending) {
-    return (
-      <main className="grid min-h-dvh place-items-center bg-[#f3f7f3]" aria-label="Restoring session">
-        <LoaderCircle className="animate-spin text-[#287254]" size={28} aria-hidden="true" />
-      </main>
-    );
-  }
-
-  if (currentUserQuery.isError) {
-    return (
-      <main className="grid min-h-dvh place-items-center bg-[#f3f7f3] px-5">
-        <section className="w-full max-w-sm bg-white px-7 py-8 text-center shadow-[0_18px_60px_rgba(22,54,38,0.08)]">
-          <MessageCircle className="mx-auto text-[#287254]" size={26} aria-hidden="true" />
-          <h1 className="mt-5 font-heading text-xl font-semibold">Chat isn’t reachable</h1>
-          <p className="mt-2 text-sm leading-6 text-[#748279]">Check your connection and try restoring your session again.</p>
-          <button
-            type="button"
-            onClick={() => void currentUserQuery.refetch()}
-            className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 bg-[#287254] px-5 text-sm font-semibold text-white transition hover:bg-[#205c43]"
-          >
-            Try again <ArrowRight size={15} aria-hidden="true" />
-          </button>
-        </section>
-      </main>
-    );
-  }
-
-  if (currentUserQuery.data) {
-    return <ChatWorkspace currentUser={currentUserQuery.data} onSignOut={handleLogout} />;
-  }
-
   return (
-    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-[#f3f7f3] px-5 py-12 text-[#20352b]">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-0 hidden w-[38%] border-l border-[#e2ebe4] bg-[linear-gradient(145deg,#edf4ee_0%,#f5eee0_56%,#f3f7f3_100%)] lg:block" />
-      <section className="chat-arrive relative z-10 grid w-full max-w-245 overflow-hidden border border-[#dce7df] bg-white shadow-[0_24px_80px_rgba(24,60,42,0.09)] md:grid-cols-[1.1fr_0.9fr]">
-        <div className="flex flex-col justify-between px-7 py-8 sm:px-10 sm:py-11">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-xl bg-[#287254] text-white">
-                <MessageCircle size={19} aria-hidden="true" />
-              </span>
-              <span className="font-heading text-lg font-semibold">ChatApp</span>
-            </div>
-            <p className="mt-14 text-[10px] font-bold tracking-[0.18em] text-[#78897f]">A SPACE FOR YOUR PEOPLE</p>
-            <h1 className="mt-3 max-w-lg font-heading text-4xl leading-[1.1] font-semibold sm:text-5xl">
-              Make room for a good conversation.
-            </h1>
-            <p className="mt-5 max-w-md text-sm leading-6 text-[#6d7c73]">
-              Find the people you know, pick up where you left off, and keep the conversation close.
-            </p>
-          </div>
-          <p className="mt-12 text-xs text-[#849188]">Private by default. Your account stays yours.</p>
-        </div>
-        <div className="flex flex-col justify-center border-t border-[#e6ede7] bg-[#fbfdfb] px-7 py-9 sm:px-10 md:border-t-0 md:border-l">
-          <p className="text-xs font-semibold tracking-[0.12em] text-[#75857b]">WELCOME BACK</p>
-          <h2 className="mt-2 font-heading text-2xl font-semibold">Sign in to your space</h2>
-          <p className="mt-2 text-sm leading-6 text-[#748279]">Use your Google account to continue securely.</p>
-          <button
-            type="button"
-            onClick={handleLogin}
-            className="mt-8 inline-flex min-h-12 items-center justify-center gap-3 border border-[#cfdcd2] bg-white px-5 text-sm font-semibold text-[#263d30] transition hover:border-[#8eae98] hover:bg-[#f4f8f4] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#287254]"
-          >
-            <GoogleMark />
-            Continue with Google
-            <ArrowRight size={16} className="ml-auto text-[#668071]" aria-hidden="true" />
-          </button>
-          <p className="mt-5 text-center text-[11px] leading-5 text-[#89968e]">
-            Continuing means you agree to use ChatApp respectfully.
+    <main className="min-h-dvh overflow-hidden bg-[#f5f8f5] text-[#20352b]">
+      <header className="relative z-10 mx-auto flex h-18 w-full max-w-7xl items-center justify-between px-5 sm:px-8 lg:px-12">
+        <Link href="/" className="flex items-center gap-2.5" aria-label="ChatApp home">
+          <span className="grid size-9 place-items-center rounded-xl bg-[#287254] text-white shadow-sm">
+            <MessageCircle size={18} aria-hidden="true" />
+          </span>
+          <span className="font-heading text-lg font-semibold tracking-tight">ChatApp</span>
+        </Link>
+        <Link
+          href="/signin"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d5e2d8] bg-white px-4 text-sm font-semibold text-[#315941] shadow-sm transition hover:border-[#9bb9a4] hover:bg-[#f8fbf8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#287254]"
+        >
+          Sign in <ArrowRight size={15} aria-hidden="true" />
+        </Link>
+      </header>
+
+      <section className="relative mx-auto grid min-h-[620px] max-w-7xl items-center gap-12 px-5 pb-16 pt-12 sm:px-8 md:grid-cols-[1.04fr_0.96fr] md:gap-8 md:pb-24 md:pt-16 lg:px-12">
+        <div aria-hidden="true" className="pointer-events-none absolute -top-24 right-[-8rem] size-[34rem] rounded-full bg-[radial-gradient(circle,rgba(192,218,199,0.46),rgba(245,248,245,0)_68%)]" />
+        <div className="chat-arrive relative z-10 max-w-2xl">
+          <p className="inline-flex items-center gap-2 rounded-full border border-[#dbe8de] bg-white/75 px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-[#557361]">
+            <span className="size-1.5 rounded-full bg-[#45a576]" /> A SPACE FOR YOUR PEOPLE
           </p>
+          <h1 className="mt-6 font-heading text-[2.8rem] leading-[1.04] font-medium tracking-[-0.045em] sm:text-6xl lg:text-[4.4rem]">
+            Good conversations deserve <span className="text-[#397657]">room to grow.</span>
+          </h1>
+          <p className="mt-6 max-w-lg text-base leading-7 text-[#687a6f] sm:text-lg sm:leading-8">
+            A calm, private place to find your people, pick up where you left off, and stay close through the little things.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Link
+              href="/signin"
+              className="inline-flex min-h-12 items-center justify-center gap-3 rounded-full bg-[#287254] px-6 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(40,114,84,0.2)] transition hover:-translate-y-0.5 hover:bg-[#205f45] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#287254]"
+            >
+              Start a conversation <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+            <p className="text-center text-xs text-[#829087] sm:ml-2 sm:text-left">Private by default. Yours to keep.</p>
+          </div>
+          <div className="mt-10 flex items-center gap-3 text-xs text-[#74847a]">
+            <span className="flex -space-x-2" aria-hidden="true">
+              <span className="grid size-8 place-items-center rounded-full border-2 border-[#f5f8f5] bg-[#e4ede6] text-[10px] font-semibold text-[#467056]">A</span>
+              <span className="grid size-8 place-items-center rounded-full border-2 border-[#f5f8f5] bg-[#efe7d8] text-[10px] font-semibold text-[#8b6a42]">M</span>
+              <span className="grid size-8 place-items-center rounded-full border-2 border-[#f5f8f5] bg-[#dcebe6] text-[10px] font-semibold text-[#46786a]">S</span>
+            </span>
+            <span>Made for the conversations that matter.</span>
+          </div>
+        </div>
+
+        <div className="chat-arrive relative z-10 mx-auto w-full max-w-[31rem] md:justify-self-end" aria-label="ChatApp conversation preview">
+          <div aria-hidden="true" className="absolute -inset-5 rounded-[2rem] bg-[linear-gradient(145deg,rgba(228,239,230,0.75),rgba(246,239,224,0.55))] blur-xl" />
+          <div className="relative overflow-hidden rounded-2xl border border-[#dce7df] bg-white shadow-[0_28px_80px_rgba(27,65,44,0.13)]">
+            <div className="flex h-[4.25rem] items-center justify-between border-b border-[#e8eee9] px-5">
+              <div className="flex items-center gap-3">
+                <span className="relative grid size-10 place-items-center rounded-full bg-[#e6f0eb] text-sm font-semibold text-[#287254]">J<span className="absolute right-0 bottom-0 size-2.5 rounded-full border-2 border-white bg-[#35a77a]" /></span>
+                <div><p className="text-sm font-semibold">Jamie Rivera</p><p className="mt-0.5 text-[11px] text-[#7d8b82]">Online now</p></div>
+              </div>
+              <span className="text-[10px] font-semibold tracking-[0.12em] text-[#9aa69e]">TODAY</span>
+            </div>
+            <div className="flex min-h-[20rem] flex-col justify-end gap-3 bg-[radial-gradient(ellipse_at_top_left,rgba(68,135,96,0.06),transparent_48%)] px-4 py-5 sm:min-h-[22rem] sm:px-6">
+              <p className="mb-1 text-center text-[10px] font-medium text-[#9aa69e]">A little while ago</p>
+              <div className="max-w-[82%] self-start rounded-2xl rounded-bl-md border border-[#e4ebe5] bg-white px-4 py-3 shadow-sm">
+                <p className="text-[13px] leading-5 text-[#405348]">That walk by the water was exactly what I needed.</p>
+                <p className="mt-1.5 text-right text-[10px] text-[#849188]">10:42</p>
+              </div>
+              <div className="max-w-[82%] self-end rounded-2xl rounded-br-md bg-[#dceee1] px-4 py-3 text-[#304838] shadow-sm">
+                <p className="text-[13px] leading-5">Same here. Let’s make it a weekly thing 🌿</p>
+                <div className="mt-1.5 flex items-center justify-end gap-1 text-[10px] text-[#708278]"><span>10:44</span><Check size={12} aria-hidden="true" /></div>
+              </div>
+              <div className="mt-2 flex h-11 items-center justify-between rounded-xl border border-[#e2eae3] bg-white px-3 text-xs text-[#a0aaa3] shadow-sm">
+                <span>Write a message…</span><span className="grid size-7 place-items-center rounded-lg bg-[#287254] text-white"><ArrowRight size={14} aria-hidden="true" /></span>
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-5 border-t border-[#e8eee9] bg-[#fcfdfc] px-4 py-3 text-[10px] font-semibold tracking-[0.04em] text-[#74847a]">
+              <span className="inline-flex items-center gap-1.5"><ShieldCheck size={13} className="text-[#438165]" aria-hidden="true" /> Private chats</span>
+              <span className="inline-flex items-center gap-1.5"><Users size={13} className="text-[#438165]" aria-hidden="true" /> Your people</span>
+            </div>
+          </div>
         </div>
       </section>
+
+      <section className="border-y border-[#e2ebe4] bg-white/70">
+        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-12 sm:px-8 md:grid-cols-3 md:gap-10 md:py-14 lg:px-12">
+          <Feature icon={<Users size={18} aria-hidden="true" />} title="Find your people" description="Search for someone you know and start a one-to-one conversation." />
+          <Feature icon={<MessageCircle size={18} aria-hidden="true" />} title="Pick up naturally" description="Your conversations stay organized, with the latest messages close at hand." />
+          <Feature icon={<Search size={18} aria-hidden="true" />} title="Keep it personal" description="A focused space for direct chats, without the noise of a crowded feed." />
+        </div>
+      </section>
+
+      <footer className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-7 text-xs text-[#829087] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-12">
+        <span>© {new Date().getFullYear()} ChatApp</span>
+        <span>Private by default. Your account stays yours.</span>
+      </footer>
     </main>
   );
 }
 
-function GoogleMark() {
+function Feature({ icon, title, description }: { icon: ReactNode; title: string; description: string }) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 48 48" className="size-4.5">
-      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z" />
-      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.73 7.18l7.65 5.94c4.47-4.13 7.12-10.2 7.12-17.59Z" />
-      <path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.75-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19Z" />
-      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.86l-7.65-5.94c-2.13 1.43-4.86 2.27-8.25 2.27-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48Z" />
-    </svg>
+    <article className="flex gap-4">
+      <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#e0eae2] bg-[#f4f8f4] text-[#438165]">{icon}</span>
+      <div><h2 className="font-heading text-lg font-semibold">{title}</h2><p className="mt-1.5 text-sm leading-6 text-[#75847b]">{description}</p></div>
+    </article>
   );
 }
