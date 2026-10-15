@@ -198,7 +198,7 @@ export function ChatSidebar({
   };
 
   return (
-    <aside className="flex min-h-0 flex-1 flex-col border-r border-[#dce7df] bg-[#fbfdfb] lg:flex-none lg:w-89 xl:w-95">
+    <aside className="flex h-full min-h-0 w-full flex-col border-r border-[#dce7df] bg-[#fbfdfb] shadow-[8px_0_28px_rgba(22,54,38,0.08)] lg:flex-none lg:w-89 lg:shadow-none xl:w-95">
       <header className="flex h-19 shrink-0 items-center justify-between border-b border-[#e3ebe5] px-5">
         <div className="flex items-center gap-3">
           <span className="grid size-9 place-items-center rounded-xl bg-[#287254] text-white">

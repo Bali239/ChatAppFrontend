@@ -46,6 +46,16 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isDropdownOpen]);
 
+  // Escape dismisses the mobile sidebar drawer.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") dispatch(setSidebarOpen(false));
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [dispatch, sidebarOpen]);
+
   // Close dropdown on Escape key
   useEffect(() => {
     if (!isDropdownOpen) return;
@@ -179,11 +189,6 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
     dispatch(setSidebarOpen(true));
   };
 
-  // Compute sidebar visibility:
-  // On large screens: always show sidebar
-  // On small screens: show sidebar if sidebarOpen AND no conversation selected
-  const showSidebar = sidebarOpen || !selectedConversationId;
-
   return (
     <main className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[#f3f7f3] text-[#20352b]">
       <header className="z-10 flex h-14 shrink-0 items-center justify-between border-b border-[#dce7df] bg-white px-4 sm:px-6">
@@ -191,6 +196,8 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
           <button
             type="button"
             aria-label="Toggle sidebar"
+            aria-controls="chat-sidebar"
+            aria-expanded={sidebarOpen}
             onClick={() => dispatch(toggleSidebar())}
             className="inline-flex size-9 items-center justify-center rounded-lg text-[#65766c] transition hover:bg-[#eff4f0] lg:hidden"
           >
@@ -246,7 +253,18 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
       </header>
 
       <div className="relative flex min-h-0 flex-1">
-        <div className={`${showSidebar ? "flex" : "hidden"} min-h-0 w-full lg:flex lg:w-auto`}>
+        {sidebarOpen ? (
+          <button
+            type="button"
+            aria-label="Close sidebar"
+            onClick={() => dispatch(setSidebarOpen(false))}
+            className="absolute inset-0 z-20 bg-black/35 backdrop-blur-[1px] lg:hidden"
+          />
+        ) : null}
+        <div
+          id="chat-sidebar"
+          className={`absolute inset-y-0 left-0 z-30 w-[min(22rem,calc(100vw-2rem))] max-w-full transform transition-transform duration-300 ease-out lg:static lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:transition-none ${sidebarOpen ? "visible translate-x-0" : "invisible pointer-events-none -translate-x-full lg:visible lg:pointer-events-auto"}`}
+        >
           <ChatSidebar
             currentUser={currentUser}
             selectedConversationId={selectedConversationId}
@@ -255,7 +273,7 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
           />
         </div>
 
-        <section className={`${selectedConversationId ? "flex" : "hidden lg:flex"} min-w-0 flex-1 flex-col bg-[radial-gradient(ellipse_at_top_left,rgba(68,135,96,0.07),transparent_42%)]`}>
+        <section className="flex min-w-0 flex-1 flex-col bg-[radial-gradient(ellipse_at_top_left,rgba(68,135,96,0.07),transparent_42%)]">
           {selectedConversationId && selectedConversation ? (
             <ChatConversation
               key={selectedConversation.id}
