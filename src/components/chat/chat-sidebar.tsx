@@ -109,7 +109,7 @@ function ConversationRow({
         </span>
         <span className="mt-1 flex items-center justify-between gap-2">
           <span className="truncate text-xs text-[#718078]">{preview}</span>
-          {conversation.unreadCount > 0 ? (
+          {!selected && conversation.unreadCount > 0 ? (
             <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[#287254] px-1.5 py-0.5 text-[10px] font-bold text-white">
               {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
             </span>
