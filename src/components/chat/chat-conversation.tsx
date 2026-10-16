@@ -3,13 +3,14 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type UIEvent } from "react";
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { AlertTriangle, ArrowLeft, Bot, Check, CheckCheck, ChevronUp, LoaderCircle, MessageCircle, RotateCcw, Send, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Bot, Check, CheckCheck, ChevronUp, LoaderCircle, MessageCircle, Paperclip, RotateCcw, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/chat/avatar";
 import {
   chatQueryKeys,
   clearConversation,
   getMessages,
+  uploadChatMedia,
   type ConversationRecord,
   type MessageHistoryPage,
   type MessageRecord,
@@ -91,11 +92,15 @@ export function ChatConversation({
   const deliveredMessageIdsRef = useRef(new Set<string>());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [draft, setDraft] = useState("");
+  const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
   const [pendingMessages, setPendingMessages] = useState<PendingMessage[]>([]);
   const [isClearing, setIsClearing] = useState(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
+  useEffect(() => () => { if (mediaPreviewUrl) URL.revokeObjectURL(mediaPreviewUrl); }, [mediaPreviewUrl]);
   const [aiRequests, setAiRequests] = useState<Set<string>>(() => new Set());
   const isAiGenerating = aiRequests.size > 0;
   const [clearCutoff, setClearCutoff] = useState<string | null>(conversation.clearedAt);
@@ -388,10 +393,61 @@ export function ChatConversation({
     });
   };
 
+  const handleMediaSelect = (file?: File) => {
+    if (!file) return;
+    const isImage = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+    const isVideo = file.type === "video/mp4";
+    if (!isImage && !isVideo) {
+      toast.error("Choose a JPG, PNG, WebP image, or MP4 video.");
+      return;
+    }
+    if (file.size > (isImage ? 10 : 100) * 1024 * 1024) {
+      toast.error(isImage ? "Images must be no larger than 10 MB." : "MP4 videos must be no larger than 100 MB.");
+      return;
+    }
+    setSelectedMedia(file);
+    setMediaPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const sendSelectedMedia = async () => {
+    if (!selectedMedia || isUploadingMedia) return;
+    const file = selectedMedia;
+    setIsUploadingMedia(true);
+    try {
+      const attachment = await uploadChatMedia(file);
+      const socket = connectSocket();
+      if (!socket.connected) throw new Error("You’re offline. Reconnect and try again.");
+      socket.timeout(150_000).emit("message:send", {
+        conversationId: conversation.id,
+        content: draft.trim(),
+        attachment,
+        clientMessageId: crypto.randomUUID().replaceAll("-", "_"),
+      }, (timeoutError: Error | null, response?: { ok: boolean; message?: MessageRecord; error?: { message: string } }) => {
+        setIsUploadingMedia(false);
+        if (timeoutError || !response?.ok || !response.message) {
+          toast.error(response?.error?.message ?? "Media message wasn’t sent.");
+          return;
+        }
+        mergeMessage(queryClient, conversation.id, response.message, clearedAtRef.current);
+        void queryClient.invalidateQueries({ queryKey: chatQueryKeys.conversations });
+        setSelectedMedia(null);
+        setMediaPreviewUrl(null);
+        setDraft("");
+      });
+    } catch (error) {
+      setIsUploadingMedia(false);
+      toast.error(error instanceof Error ? error.message : "Upload failed.");
+    }
+  };
+
   const submitMessage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isAiGenerating) return;
     const content = draft.trim();
+    if (selectedMedia) {
+      void sendSelectedMedia();
+      return;
+    }
     if (!content) return;
     sendMessage(content);
     setDraft("");
@@ -556,6 +612,8 @@ export function ChatConversation({
                   <div className={`max-w-[min(82%,620px)] px-3 py-2 shadow-[0_1px_2px_rgba(20,45,32,0.06)] sm:max-w-[72%] sm:px-3.5 sm:py-2.5 ${ownMessage ? "bg-[#dceee1] text-[#24392d]" : "border border-[#e1eae3] bg-white text-[#283a30]"}`}>
                     {isAiMessage ? <p className="mb-1 inline-flex items-center gap-1 text-[10px] font-semibold text-[#718078]"><Bot size={12} aria-hidden="true" /> Gemini AI</p> : null}
                     <p className="whitespace-pre-wrap wrap-break-word text-[14px] leading-[1.55]">{message.content}</p>
+                    {message.attachment?.type === "image" ? <img src={message.attachment.url} alt="Shared image" className="mt-2 max-h-80 max-w-full object-contain" /> : null}
+                    {message.attachment?.type === "video" ? <video src={message.attachment.url} controls preload="metadata" className="mt-2 max-h-80 max-w-full" /> : null}
                     <div className="mt-1.5 flex items-center justify-end gap-1.5 text-[10px] text-[#738178]">
                       <time dateTime={message.createdAt}>{format(new Date(message.createdAt), "p")}</time>
                       {ownMessage ? renderStatus(message) : null}
@@ -603,7 +661,25 @@ export function ChatConversation({
       </div>
 
       <form onSubmit={submitMessage} className="shrink-0 border-t border-[#dce7df] bg-white px-2.5 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        {selectedMedia && mediaPreviewUrl ? (
+          <div className="mb-2 flex items-center gap-3 border border-[#dce7df] bg-[#f6faf7] p-2.5">
+            {selectedMedia.type.startsWith("image/") ? (
+              <img src={mediaPreviewUrl} alt="Selected image preview" className="max-h-40 max-w-[min(60%,280px)] object-contain" />
+            ) : (
+              <video src={mediaPreviewUrl} controls className="max-h-40 max-w-[min(60%,280px)]" />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium text-[#40594a]">{selectedMedia.name}</p>
+              <p className="mt-1 text-[10px] text-[#829188]">{(selectedMedia.size / (1024 * 1024)).toFixed(1)} MB · Ready to send</p>
+            </div>
+            <button type="button" aria-label="Remove attachment" disabled={isUploadingMedia} onClick={() => { setSelectedMedia(null); setMediaPreviewUrl(null); }} className="grid size-8 shrink-0 place-items-center text-[#6e7d74] hover:bg-white disabled:opacity-50"><X size={16} /></button>
+          </div>
+        ) : null}
         <div className="flex items-end gap-2 border border-[#dce7df] bg-[#fbfdfb] p-1 focus-within:border-[#75a185] focus-within:ring-2 focus-within:ring-[#4b8a6d]/10 sm:p-1.5">
+          <label className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center text-[#557263] hover:bg-[#edf4ef]" aria-label="Attach image or video">
+            <Paperclip size={17} aria-hidden="true" />
+            <input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp,video/mp4" disabled={isAiGenerating || isUploadingMedia} onChange={(event) => { handleMediaSelect(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }} />
+          </label>
           <label htmlFor="message-composer" className="sr-only">Write a message</label>
           <textarea
             ref={textareaRef}
@@ -626,10 +702,10 @@ export function ChatConversation({
           <button
             type="submit"
             aria-label="Send message"
-            disabled={!draft.trim() || isAiGenerating}
+            disabled={(!draft.trim() && !selectedMedia) || isAiGenerating || isUploadingMedia}
             className="inline-flex size-10 shrink-0 items-center justify-center bg-[#287254] text-white transition hover:bg-[#205c43] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#287254] disabled:cursor-not-allowed disabled:bg-[#d8e4db] disabled:text-[#87958b]"
           >
-            <Send size={17} aria-hidden="true" />
+            {isUploadingMedia ? <LoaderCircle size={17} className="animate-spin" aria-hidden="true" /> : <Send size={17} aria-hidden="true" />}
           </button>
         </div>
         <p className="mt-1 px-1 text-[10px] text-[#8a978f] sm:mt-1.5 text-center">{isAiGenerating ? "Sending is paused while Gemini replies…" : "Enter to send · Shift+Enter for a new line · Start with @ai to ask Gemini"}</p>
