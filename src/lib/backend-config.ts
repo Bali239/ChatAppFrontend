@@ -56,13 +56,9 @@ export function validateApiBaseUrl(
 
 export function resolveSocketUrl(
   socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL,
-  apiUrl = process.env.NEXT_PUBLIC_API_URL,
   isProduction = process.env.NODE_ENV === "production",
 ): string {
-  const url = parseBackendUrl(
-    socketUrl ?? new URL(validateApiBaseUrl(apiUrl, isProduction)).origin,
-    "NEXT_PUBLIC_SOCKET_URL",
-  );
+  const url = parseBackendUrl(socketUrl, "NEXT_PUBLIC_SOCKET_URL");
 
   if (url.pathname !== "/" || url.search || url.hash) {
     throw new Error("NEXT_PUBLIC_SOCKET_URL must be a backend origin without a path.");

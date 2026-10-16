@@ -18,22 +18,20 @@ describe("public backend URL configuration", () => {
     expect(() =>
       validateApiBaseUrl("http://localhost:4000/api/v1", true),
     ).toThrow("localhost");
-    expect(() => resolveSocketUrl("http://127.0.0.1:4000", undefined, true)).toThrow(
+    expect(() => resolveSocketUrl("http://127.0.0.1:4000", true)).toThrow(
       "localhost",
     );
     expect(() => validateApiBaseUrl("http://api.example.com/api/v1", true)).toThrow(
       "Public backend URLs must use HTTPS in production."
     );
-    expect(() => resolveSocketUrl("http://socket.example.com", undefined, true)).toThrow(
+    expect(() => resolveSocketUrl("http://socket.example.com", true)).toThrow(
       "Public backend URLs must use HTTPS in production."
     );
   });
 
-  it("uses the API origin for Socket.IO only when no socket origin is configured", () => {
-    expect(resolveSocketUrl(undefined, "https://api.example.com/api/v1", true)).toBe(
-      "https://api.example.com",
-    );
-    expect(resolveSocketUrl("https://socket.example.com", undefined, true)).toBe(
+  it("requires an explicit Socket.IO origin", () => {
+    expect(() => resolveSocketUrl("", true)).toThrow("NEXT_PUBLIC_SOCKET_URL");
+    expect(resolveSocketUrl("https://socket.example.com", true)).toBe(
       "https://socket.example.com",
     );
     expect(() => resolveSocketUrl("https://socket.example.com/socket.io")).toThrow(

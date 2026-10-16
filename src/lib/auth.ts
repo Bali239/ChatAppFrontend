@@ -1,4 +1,5 @@
 import apiClient from "./axios";
+import { validateApiBaseUrl } from "./backend-config";
 
 export type AuthUser = {
   id: string;
@@ -14,14 +15,6 @@ export type AuthUserResponse = {
   avatarUrl?: string | null;
 };
 
-function normalizeApiBaseUrl(value: string | undefined): string {
-  if (!value) {
-    return "http://localhost:4000/api/v1";
-  }
-
-  return value.replace(/\/+$/, "");
-}
-
 export function normalizeAuthUser(user: AuthUserResponse): AuthUser {
   return {
     id: user.id,
@@ -32,14 +25,15 @@ export function normalizeAuthUser(user: AuthUserResponse): AuthUser {
 }
 
 export function buildGoogleAuthUrl(
-  returnTo = typeof window !== "undefined" ? window.location.origin : "https://localhost:3000",
+  returnTo?: string,
   apiBaseUrl = process.env.NEXT_PUBLIC_API_URL,
 ): string {
-  const baseUrl = normalizeApiBaseUrl(apiBaseUrl);
+  const baseUrl = validateApiBaseUrl(apiBaseUrl);
   const url = new URL(`${baseUrl}/auth/google`);
+  const destination = returnTo ?? (typeof window !== "undefined" ? window.location.origin : undefined);
 
-  if (returnTo) {
-    url.searchParams.set("returnTo", returnTo);
+  if (destination) {
+    url.searchParams.set("returnTo", destination);
   }
 
   return url.toString();

@@ -14,9 +14,7 @@ export function createApiClient(apiUrl = process.env.NEXT_PUBLIC_API_URL) {
   });
 
   client.interceptors.request.use((request) => {
-    request.baseURL = validateApiBaseUrl(
-      request.baseURL ?? apiUrl ?? process.env.NEXT_PUBLIC_API_URL,
-    );
+    request.baseURL = validateApiBaseUrl(apiUrl);
     return request;
   });
 
