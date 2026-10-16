@@ -198,7 +198,17 @@ export function ChatSidebar({
   };
 
   return (
-    <aside className="flex h-full min-h-0 w-full flex-col border-r border-[#dce7df] bg-[#fbfdfb] shadow-[8px_0_28px_rgba(22,54,38,0.08)] lg:flex-none lg:w-89 lg:shadow-none xl:w-95">
+    <aside
+      onBlurCapture={(event) => {
+        // Keep the People list mounted while focus moves from search to a row.
+        // Hiding it on the input's blur unmounts the row before its click fires.
+        const nextTarget = event.relatedTarget;
+        if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) {
+          setSearchFocused(false);
+        }
+      }}
+      className="flex h-full min-h-0 w-full flex-col border-r border-[#dce7df] bg-[#fbfdfb] shadow-[8px_0_28px_rgba(22,54,38,0.08)] lg:flex-none lg:w-89 lg:shadow-none xl:w-95"
+    >
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#e3ebe5] px-4 sm:h-19 sm:px-5">
         <div className="flex items-center gap-2 sm:gap-3">
           <span className="grid size-8 place-items-center rounded-xl bg-[#287254] text-white sm:size-9">
@@ -221,7 +231,6 @@ export function ChatSidebar({
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
             onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
             placeholder="Search people"
             autoComplete="off"
             className="h-10 w-full border border-[#dce7df] bg-white pr-10 pl-10 text-sm text-[#20352b] outline-none transition placeholder:text-[#9aa69f] focus:border-[#4b8a6d] focus:ring-2 focus:ring-[#4b8a6d]/15 sm:h-11"
