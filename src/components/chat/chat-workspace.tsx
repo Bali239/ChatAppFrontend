@@ -91,6 +91,8 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
     };
     const onProfileUpdated = (profile: ProfileUpdatedEvent) => {
       updateProfileCaches(queryClient, profile);
+      void queryClient.invalidateQueries({ queryKey: ["users"] });
+      void queryClient.invalidateQueries({ queryKey: chatQueryKeys.conversations });
       setSelectedConversation((current) => current?.participant.id === profile.id
         ? { ...current, participant: { ...current.participant, ...profile } }
         : current);
