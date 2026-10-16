@@ -1,6 +1,7 @@
 import { io, type Socket } from "socket.io-client";
 import { resolveSocketUrl } from "./backend-config";
 import { getAccessToken } from "./access-token";
+import { refreshSessionAccessToken } from "./axios";
 
 let socket: Socket | null = null;
 
@@ -15,6 +16,20 @@ export function connectSocket(): Socket {
     socket = io(url, {
       autoConnect: false,
       auth: { token: getAccessToken() },
+    });
+    let refreshing = false;
+    socket.on("connect_error", async (error) => {
+      if (error.message !== "Authentication required" || refreshing || !socket) return;
+      refreshing = true;
+      const token = await refreshSessionAccessToken();
+      refreshing = false;
+      if (!socket) return;
+      if (!token) {
+        socket.disconnect();
+        return;
+      }
+      socket.auth = { token };
+      socket.connect();
     });
   }
 
