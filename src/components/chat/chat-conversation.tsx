@@ -186,12 +186,17 @@ export function ChatConversation({
     };
     const onAiError = (update: { conversationId: string; requestMessageId: string; message: string }) => {
       if (update.conversationId !== conversation.id) return;
+      const replyAlreadyReceived = queryClient
+        .getQueryData<InfiniteData<MessageHistoryPage, string | null>>(chatQueryKeys.messages(conversation.id))
+        ?.pages.some((page) => page.messages.some((message) =>
+          message.senderType === "assistant" && message.replyToMessageId === update.requestMessageId,
+        )) ?? false;
       setAiRequests((current) => {
         const next = new Set(current);
         next.delete(update.requestMessageId);
         return next;
       });
-      toast.error(update.message);
+      if (!replyAlreadyReceived) toast.error(update.message);
     };
     const onTyping = (update: { conversationId: string; userId: string; isTyping: boolean }) => {
       if (update.conversationId === conversation.id && update.userId !== currentUser.id) {
@@ -365,7 +370,7 @@ export function ChatConversation({
       return;
     }
 
-    socket.timeout(120_000).emit("message:send", {
+    socket.timeout(150_000).emit("message:send", {
       conversationId: conversation.id,
       content: normalizedContent,
       clientMessageId,
