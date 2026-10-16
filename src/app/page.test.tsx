@@ -65,29 +65,19 @@ async function renderHome(): Promise<void> {
   });
 }
 
-describe("protected chat route", () => {
-  it("does not mount the chat workspace for an unauthenticated session", async () => {
-    getCurrentUserMock.mockResolvedValue(null);
-
+describe("public landing page", () => {
+  it("offers sign-in entry points without mounting private chat", async () => {
     await renderHome();
-    await vi.waitFor(() => expect(container?.textContent).toContain("Continue with Google"));
+    await vi.waitFor(() => expect(container?.textContent).toContain("Start a conversation"));
 
     expect(container?.querySelector('[data-testid="private-chat-workspace"]')).toBeNull();
     expect(chatWorkspaceMock).not.toHaveBeenCalled();
     expect(connectSocketMock).not.toHaveBeenCalled();
   });
 
-  it("mounts the complete workspace only after the current-user session is confirmed", async () => {
-    getCurrentUserMock.mockResolvedValue({
-      id: "user-123",
-      name: "Jane Doe",
-      email: "jane@example.com",
-      avatarUrl: null,
-    });
-
+  it("links to the dedicated sign-in route", async () => {
     await renderHome();
-    await vi.waitFor(() => expect(container?.textContent).toContain("Private chat"));
-
-    expect(chatWorkspaceMock).toHaveBeenCalledOnce();
+    expect(container?.querySelector('a[href="/signin"]')).not.toBeNull();
+    expect(chatWorkspaceMock).not.toHaveBeenCalled();
   });
 });
