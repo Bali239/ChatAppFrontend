@@ -1,5 +1,6 @@
 import apiClient from "./axios";
 import { validateApiBaseUrl } from "./backend-config";
+import { clearAccessToken, createOAuthClientState } from "./access-token";
 
 export type AuthUser = {
   id: string;
@@ -55,16 +56,12 @@ export async function getCurrentUser(signal?: AbortSignal): Promise<AuthUser | n
   }
 }
 
-export async function getCsrfToken(): Promise<string> {
-  const response = await apiClient.get<{ data: { csrfToken: string } }>("/auth/csrf");
-  return response.data.data.csrfToken;
-}
-
 export async function logoutUser(): Promise<void> {
-  const csrfToken = await getCsrfToken();
-  await apiClient.post("/auth/logout", undefined, {
-    headers: { "X-CSRF-Token": csrfToken },
-  });
+  try {
+    await apiClient.post("/auth/logout");
+  } finally {
+    clearAccessToken();
+  }
 }
 
 export function startGoogleLogin(returnTo = typeof window !== "undefined" ? window.location.href : undefined): void {
@@ -72,6 +69,7 @@ export function startGoogleLogin(returnTo = typeof window !== "undefined" ? wind
     return;
   }
 
-  const nextUrl = buildGoogleAuthUrl(returnTo);
-  window.location.assign(nextUrl);
+  const nextUrl = new URL(buildGoogleAuthUrl(returnTo));
+  nextUrl.searchParams.set("clientState", createOAuthClientState());
+  window.location.assign(nextUrl.toString());
 }

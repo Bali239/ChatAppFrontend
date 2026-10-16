@@ -1,5 +1,4 @@
 import apiClient from './axios';
-import { getCsrfToken } from './auth';
 
 interface ApiEnvelope<T> {
   data: T;
@@ -145,21 +144,17 @@ export async function getMessages(input: {
 }
 
 export async function createDirectConversation(userId: string): Promise<string> {
-  const csrfToken = await getCsrfToken();
   const response = await apiClient.post<ApiEnvelope<{ conversationId: string }>>(
     `/conversations/direct/${userId}`,
     {},
-    { headers: { 'X-CSRF-Token': csrfToken } },
   );
   return response.data.data.conversationId;
 }
 
 export async function clearConversation(conversationId: string): Promise<{ clearedAt: string }> {
-  const csrfToken = await getCsrfToken();
   const response = await apiClient.post<ApiEnvelope<{ clearedAt: string }>>(
     `/conversations/${conversationId}/clear`,
     {},
-    { headers: { 'X-CSRF-Token': csrfToken } },
   );
   return response.data.data;
 }
@@ -168,14 +163,12 @@ export async function markConversationRead(input: {
   conversationId: string;
   messageId: string;
 }): Promise<{ lastReadAt: string | null; lastReadMessageId: string | null }> {
-  const csrfToken = await getCsrfToken();
   const response = await apiClient.post<ApiEnvelope<{
     lastReadAt: string | null;
     lastReadMessageId: string | null;
   }>>(
     `/conversations/${input.conversationId}/read`,
     { messageId: input.messageId },
-    { headers: { 'X-CSRF-Token': csrfToken } },
   );
   return response.data.data;
 }
@@ -184,24 +177,19 @@ export async function updateMyProfile(input: {
   displayName?: string;
   avatarPublicId?: string;
 }): Promise<{ id: string; displayName: string; email: string; avatarUrl: string | null }> {
-  const csrfToken = await getCsrfToken();
   const response = await apiClient.patch<ApiEnvelope<{ user: {
     id: string;
     displayName: string;
     email: string;
     avatarUrl: string | null;
-  } }>>('/users/me/profile', input, {
-    headers: { 'X-CSRF-Token': csrfToken },
-  });
+  } }>>('/users/me/profile', input);
   return response.data.data.user;
 }
 
 export async function requestAvatarUploadSignature(): Promise<AvatarUploadSignature> {
-  const csrfToken = await getCsrfToken();
   const response = await apiClient.post<ApiEnvelope<AvatarUploadSignature>>(
     '/uploads/avatar/signature',
     {},
-    { headers: { 'X-CSRF-Token': csrfToken } },
   );
   return response.data.data;
 }

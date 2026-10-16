@@ -39,7 +39,7 @@ describe("Socket.IO client factory", () => {
     expect(socketIo).toHaveBeenCalledOnce();
     expect(socketIo).toHaveBeenCalledWith("http://localhost:4000", {
       autoConnect: false,
-      withCredentials: true,
+      auth: { token: null },
     });
     expect(socket.connect).toHaveBeenCalledOnce();
   });

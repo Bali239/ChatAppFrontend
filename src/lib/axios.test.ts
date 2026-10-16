@@ -6,7 +6,7 @@ describe("API client", () => {
     const client = createApiClient("http://localhost:4000/api/v1");
 
     expect(client.defaults.baseURL).toBe("http://localhost:4000/api/v1");
-    expect(client.defaults.withCredentials).toBe(true);
+    expect(client.defaults.withCredentials).toBe(false);
     expect(client.defaults.timeout).toBe(10_000);
   });
 

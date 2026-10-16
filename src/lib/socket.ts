@@ -1,5 +1,6 @@
 import { io, type Socket } from "socket.io-client";
 import { resolveSocketUrl } from "./backend-config";
+import { getAccessToken } from "./access-token";
 
 let socket: Socket | null = null;
 
@@ -13,7 +14,7 @@ export function connectSocket(): Socket {
   if (!socket) {
     socket = io(url, {
       autoConnect: false,
-      withCredentials: true,
+      auth: { token: getAccessToken() },
     });
   }
 

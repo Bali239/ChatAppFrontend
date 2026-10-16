@@ -24,11 +24,14 @@ export function ChatRoute() {
   }, [currentUserQuery.data, router]);
 
   const handleSignOut = async () => {
-    await logoutUser();
-    disconnectSocket();
-    queryClient.setQueryData(chatQueryKeys.currentUser, null);
-    await queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== "auth" });
-    router.replace("/");
+    try {
+      await logoutUser();
+    } finally {
+      disconnectSocket();
+      queryClient.setQueryData(chatQueryKeys.currentUser, null);
+      await queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== "auth" });
+      router.replace("/");
+    }
   };
 
   if (currentUserQuery.data) {
