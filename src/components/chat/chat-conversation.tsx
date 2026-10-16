@@ -365,7 +365,7 @@ export function ChatConversation({
       return;
     }
 
-    socket.timeout(10_000).emit("message:send", {
+    socket.timeout(120_000).emit("message:send", {
       conversationId: conversation.id,
       content: normalizedContent,
       clientMessageId,
