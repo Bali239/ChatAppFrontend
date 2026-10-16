@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type UIEvent } from "react";
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { AlertTriangle, ArrowLeft, Check, CheckCheck, ChevronUp, LoaderCircle, MessageCircle, RotateCcw, Send, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Bot, Check, CheckCheck, ChevronUp, LoaderCircle, MessageCircle, RotateCcw, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/chat/avatar";
 import {
@@ -96,6 +96,8 @@ export function ChatConversation({
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [typingUserId, setTypingUserId] = useState<string | null>(null);
+  const [aiRequests, setAiRequests] = useState<Set<string>>(() => new Set());
+  const isAiGenerating = aiRequests.size > 0;
   const [clearCutoff, setClearCutoff] = useState<string | null>(conversation.clearedAt);
 
   const historyQuery = useInfiniteQuery({
@@ -150,8 +152,15 @@ export function ChatConversation({
       const messageCutoff = clearedAtRef.current;
       if (messageCutoff && new Date(message.createdAt).getTime() <= new Date(messageCutoff).getTime()) return;
       mergeMessage(queryClient, conversation.id, message, messageCutoff);
-      if (message.senderId !== currentUser.id) {
-        if (!deliveredMessageIdsRef.current.has(message.id)) {
+      if (message.senderType === "assistant" && message.replyToMessageId) {
+        setAiRequests((current) => {
+          const next = new Set(current);
+          next.delete(message.replyToMessageId!);
+          return next;
+        });
+      }
+      if (message.senderId !== currentUser.id || message.senderType === "assistant") {
+        if (message.senderId !== currentUser.id && !deliveredMessageIdsRef.current.has(message.id)) {
           deliveredMessageIdsRef.current.add(message.id);
           socket.emit("message:delivered", { conversationId: conversation.id, messageId: message.id });
         }
@@ -165,6 +174,24 @@ export function ChatConversation({
         }
       }
       void queryClient.invalidateQueries({ queryKey: chatQueryKeys.conversations });
+    };
+    const onAiStatus = (update: { conversationId: string; requestMessageId: string; active: boolean }) => {
+      if (update.conversationId !== conversation.id) return;
+      setAiRequests((current) => {
+        const next = new Set(current);
+        if (update.active) next.add(update.requestMessageId);
+        else next.delete(update.requestMessageId);
+        return next;
+      });
+    };
+    const onAiError = (update: { conversationId: string; requestMessageId: string; message: string }) => {
+      if (update.conversationId !== conversation.id) return;
+      setAiRequests((current) => {
+        const next = new Set(current);
+        next.delete(update.requestMessageId);
+        return next;
+      });
+      toast.error(update.message);
     };
     const onTyping = (update: { conversationId: string; userId: string; isTyping: boolean }) => {
       if (update.conversationId === conversation.id && update.userId !== currentUser.id) {
@@ -228,6 +255,8 @@ export function ChatConversation({
     socket.on("typing:update", onTyping);
     socket.on("message:read", onRead);
     socket.on("message:delivered", onDelivered);
+    socket.on("ai:status", onAiStatus);
+    socket.on("ai:error", onAiError);
     if (socket.connected) queueMicrotask(onConnect);
     return () => {
       socket.off("connect", onConnect);
@@ -235,6 +264,8 @@ export function ChatConversation({
       socket.off("typing:update", onTyping);
       socket.off("message:read", onRead);
       socket.off("message:delivered", onDelivered);
+      socket.off("ai:status", onAiStatus);
+      socket.off("ai:error", onAiError);
       if (socket.connected) socket.emit("conversation:leave", { conversationId: conversation.id });
       setTypingUserId(null);
     };
@@ -252,7 +283,7 @@ export function ChatConversation({
       endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
       setNewMessageCount(0);
     }
-  }, [messages.length, pendingVisible.length, historyQuery.isFetchingNextPage]);
+  }, [messages.length, pendingVisible.length, aiRequests.size, historyQuery.isFetchingNextPage]);
 
   // Auto-resize textarea to fit content (up to ~6 lines)
   useEffect(() => {
@@ -318,7 +349,7 @@ export function ChatConversation({
 
   const sendMessage = (content: string, clientMessageId = crypto.randomUUID().replaceAll("-", "_")) => {
     const normalizedContent = content.trim();
-    if (!normalizedContent || normalizedContent.length > 5_000 || sendingIdsRef.current.has(clientMessageId)) return;
+    if (isAiGenerating || !normalizedContent || normalizedContent.length > 5_000 || sendingIdsRef.current.has(clientMessageId)) return;
     const socket = connectSocket();
     const createdAt = new Date().toISOString();
     sendingIdsRef.current.add(clientMessageId);
@@ -354,6 +385,7 @@ export function ChatConversation({
 
   const submitMessage = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isAiGenerating) return;
     const content = draft.trim();
     if (!content) return;
     sendMessage(content);
@@ -413,6 +445,17 @@ export function ChatConversation({
   };
 
   const loadError = historyQuery.error instanceof Error ? "Messages couldn’t be loaded." : "Chat is temporarily unavailable.";
+  const aiReplyIndicator = aiRequests.size > 0 ? (
+    <article className="message-enter flex justify-start" role="status" aria-live="polite">
+      <div className="max-w-[min(82%,620px)] border border-[#e1eae3] bg-white px-3 py-2.5 text-[#718078] shadow-[0_1px_2px_rgba(20,45,32,0.06)] sm:max-w-[72%] sm:px-3.5">
+        <span className="mb-1 inline-flex items-center gap-1 text-[10px] font-semibold"><Bot size={12} aria-hidden="true" /> Gemini AI</span>
+        <span className="flex items-center gap-2 text-xs">
+          <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />
+          Gemini is replying…
+        </span>
+      </div>
+    </article>
+  ) : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -490,7 +533,7 @@ export function ChatConversation({
             <p className="mt-3 text-sm font-semibold">{loadError}</p>
             <button type="button" onClick={() => void historyQuery.refetch()} className="mt-3 text-sm font-semibold text-[#287254] underline underline-offset-4">Retry</button>
           </div>
-        ) : messages.length === 0 && pendingVisible.length === 0 ? (
+        ) : messages.length === 0 && pendingVisible.length === 0 && aiRequests.size === 0 ? (
           <div className="m-auto flex max-w-sm flex-col items-center text-center">
             <span className="grid size-14 place-items-center rounded-full bg-white text-[#55836a] shadow-sm">
               <MessageCircle size={23} aria-hidden="true" />
@@ -501,10 +544,12 @@ export function ChatConversation({
         ) : (
           <div className="mt-auto flex flex-col gap-2 sm:gap-2.5">
             {messages.map((message) => {
-              const ownMessage = message.senderId === currentUser.id;
+              const isAiMessage = message.senderType === "assistant";
+              const ownMessage = !isAiMessage && message.senderId === currentUser.id;
               return (
                 <article key={message.id} className={`message-enter flex ${ownMessage ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[min(82%,620px)] px-3 py-2 shadow-[0_1px_2px_rgba(20,45,32,0.06)] sm:max-w-[72%] sm:px-3.5 sm:py-2.5 ${ownMessage ? "bg-[#dceee1] text-[#24392d]" : "border border-[#e1eae3] bg-white text-[#283a30]"}`}>
+                    {isAiMessage ? <p className="mb-1 inline-flex items-center gap-1 text-[10px] font-semibold text-[#718078]"><Bot size={12} aria-hidden="true" /> Gemini AI</p> : null}
                     <p className="whitespace-pre-wrap wrap-break-word text-[14px] leading-[1.55]">{message.content}</p>
                     <div className="mt-1.5 flex items-center justify-end gap-1.5 text-[10px] text-[#738178]">
                       <time dateTime={message.createdAt}>{format(new Date(message.createdAt), "p")}</time>
@@ -523,7 +568,7 @@ export function ChatConversation({
                     {pending.status === "failed" ? (
                       <span className="inline-flex items-center gap-1 text-[#a34c3e]">
                         <span>{pending.error ?? "Failed"}</span>
-                        <button type="button" aria-label="Retry sending message" onClick={() => sendMessage(pending.content, pending.clientMessageId)} className="inline-flex size-5 items-center justify-center rounded hover:bg-white/60">
+                        <button type="button" aria-label="Retry sending message" disabled={isAiGenerating} onClick={() => sendMessage(pending.content, pending.clientMessageId)} className="inline-flex size-5 items-center justify-center rounded hover:bg-white/60 disabled:cursor-not-allowed disabled:opacity-50">
                           <RotateCcw size={12} aria-hidden="true" />
                         </button>
                       </span>
@@ -532,9 +577,10 @@ export function ChatConversation({
                 </div>
               </article>
             ))}
-            <div ref={endRef} />
           </div>
         )}
+        {aiReplyIndicator}
+        <div ref={endRef} />
         {newMessageCount > 0 ? (
           <button
             type="button"
@@ -558,6 +604,7 @@ export function ChatConversation({
             ref={textareaRef}
             id="message-composer"
             value={draft}
+            disabled={isAiGenerating}
             onChange={(event) => {
               setDraft(event.target.value.slice(0, 5_000));
               updateTyping(event.target.value);
@@ -566,7 +613,7 @@ export function ChatConversation({
             onBlur={() => updateTyping("")}
             rows={1}
             maxLength={5_000}
-            placeholder="Write a message…"
+            placeholder={isAiGenerating ? "Gemini is replying…" : "Write a message…"}
             style={{ overflow: "hidden" }}
             className="max-h-24 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-sm leading-5 outline-none placeholder:text-[#96a29a] sm:max-h-36"
           />
@@ -574,13 +621,13 @@ export function ChatConversation({
           <button
             type="submit"
             aria-label="Send message"
-            disabled={!draft.trim()}
+            disabled={!draft.trim() || isAiGenerating}
             className="inline-flex size-10 shrink-0 items-center justify-center bg-[#287254] text-white transition hover:bg-[#205c43] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#287254] disabled:cursor-not-allowed disabled:bg-[#d8e4db] disabled:text-[#87958b]"
           >
             <Send size={17} aria-hidden="true" />
           </button>
         </div>
-        <p className="mt-1 px-1 text-[10px] text-[#8a978f] sm:mt-1.5 text-center">Enter to send · Shift+Enter for a new line</p>
+        <p className="mt-1 px-1 text-[10px] text-[#8a978f] sm:mt-1.5 text-center">{isAiGenerating ? "Sending is paused while Gemini replies…" : "Enter to send · Shift+Enter for a new line · Start with @ai to ask Gemini"}</p>
       </form>
 
       <dialog

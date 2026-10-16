@@ -87,7 +87,7 @@ function ConversationRow({
 }) {
   const latest = conversation.lastMessage;
   const preview = latest
-    ? `${latest.senderId === currentUserId ? "You: " : ""}${latest.content}`
+    ? `${latest.senderType === "assistant" ? "Gemini: " : latest.senderId === currentUserId ? "You: " : ""}${latest.content}`
     : "Start a conversation";
 
   return (

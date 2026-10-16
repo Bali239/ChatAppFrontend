@@ -29,6 +29,8 @@ export interface MessageRecord {
   id: string;
   conversationId: string;
   senderId: string;
+  senderType?: "user" | "assistant";
+  replyToMessageId?: string | null;
   senderSnapshot: { displayName: string; avatarUrl: string | null };
   content: string;
   clientMessageId: string;
