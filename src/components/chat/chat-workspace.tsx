@@ -9,10 +9,11 @@ import { ChatConversation } from "@/components/chat/chat-conversation";
 import { ProfileDialog } from "@/components/chat/profile-dialog";
 import { ProfileSettingsDialog } from "@/components/chat/profile-settings-dialog";
 import { Avatar } from "@/components/chat/avatar";
-import { createDirectConversation, chatQueryKeys, type ConversationPage, type ConversationRecord, type PublicUser } from "@/lib/chat-api";
+import { createDirectConversation, chatQueryKeys, type ConversationPage, type ConversationRecord, type ProfileUpdatedEvent, type PublicUser } from "@/lib/chat-api";
 import { selectConversation, setSidebarOpen, toggleSidebar } from "@/lib/redux/ui-slice";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
+import { updateProfileCaches } from "@/lib/profile-cache";
 import type { AuthUser } from "@/lib/auth";
 
 interface ChatWorkspaceProps {
@@ -88,11 +89,21 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
       void queryClient.invalidateQueries({ queryKey: chatQueryKeys.conversations });
       void queryClient.invalidateQueries({ queryKey: chatQueryKeys.messages(message.conversationId) });
     };
+    const onProfileUpdated = (profile: ProfileUpdatedEvent) => {
+      updateProfileCaches(queryClient, profile);
+      setSelectedConversation((current) => current?.participant.id === profile.id
+        ? { ...current, participant: { ...current.participant, ...profile } }
+        : current);
+      setProfileUser((current) => current?.id === profile.id
+        ? { ...current, displayName: profile.displayName, avatarUrl: profile.avatarUrl }
+        : current);
+    };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("presence:update", onPresence);
     socket.on("message:new", onNewMessage);
+    socket.on("profile:updated", onProfileUpdated);
     if (socket.connected) queueMicrotask(onConnect);
 
     return () => {
@@ -100,6 +111,7 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
       socket.off("disconnect", onDisconnect);
       socket.off("presence:update", onPresence);
       socket.off("message:new", onNewMessage);
+      socket.off("profile:updated", onProfileUpdated);
       disconnectSocket();
     };
   }, [currentUser.id, queryClient]);

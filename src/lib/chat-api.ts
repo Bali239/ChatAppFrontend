@@ -13,6 +13,12 @@ export interface PublicUser {
   createdAt?: string;
 }
 
+export interface ProfileUpdatedEvent {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
 export interface UserPage {
   users: PublicUser[];
   nextCursor: string | null;
