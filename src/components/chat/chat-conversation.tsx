@@ -3,7 +3,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type UIEvent } from "react";
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { AlertTriangle, ArrowLeft, Bot, Check, CheckCheck, ChevronUp, LoaderCircle, MessageCircle, Paperclip, RotateCcw, Send, Trash2, X } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Bot, Check, CheckCheck, ChevronUp, LoaderCircle, MessageCircle, Paperclip, RotateCcw, Send, Smile, Trash2, X } from "lucide-react";
+import EmojiPicker, { type EmojiClickData } from "emoji-picker-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/chat/avatar";
 import {
@@ -91,7 +92,21 @@ export function ChatConversation({
   const sendingIdsRef = useRef(new Set<string>());
   const deliveredMessageIdsRef = useRef(new Set<string>());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const draftSelectionRef = useRef({ start: 0, end: 0 });
   const [draft, setDraft] = useState("");
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isEmojiPickerOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !composerRef.current?.contains(event.target)) {
+        setIsEmojiPickerOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isEmojiPickerOpen]);
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
@@ -460,6 +475,21 @@ export function ChatConversation({
     }
   };
 
+  const insertEmoji = (selection: EmojiClickData) => {
+    const textarea = textareaRef.current;
+    if (!textarea || isAiGenerating) return;
+    const { start, end } = draftSelectionRef.current;
+    const emoji = selection.emoji;
+    const nextDraft = `${draft.slice(0, start)}${emoji}${draft.slice(end)}`.slice(0, 5_000);
+    const nextCursor = Math.min(start + emoji.length, nextDraft.length);
+    setDraft(nextDraft);
+    draftSelectionRef.current = { start: nextCursor, end: nextCursor };
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(nextCursor, nextCursor);
+    });
+  };
+
   const updateTyping = (value: string) => {
     const socket = connectSocket();
     if (!socket.connected) return;
@@ -675,7 +705,18 @@ export function ChatConversation({
             <button type="button" aria-label="Remove attachment" disabled={isUploadingMedia} onClick={() => { setSelectedMedia(null); setMediaPreviewUrl(null); }} className="grid size-8 shrink-0 place-items-center text-[#6e7d74] hover:bg-white disabled:opacity-50"><X size={16} /></button>
           </div>
         ) : null}
-        <div className="flex items-end gap-2 border border-[#dce7df] bg-[#fbfdfb] p-1 focus-within:border-[#75a185] focus-within:ring-2 focus-within:ring-[#4b8a6d]/10 sm:p-1.5">
+        <div
+          ref={composerRef}
+          className="relative flex items-end gap-2 border border-[#dce7df] bg-[#fbfdfb] p-1 focus-within:border-[#75a185] focus-within:ring-2 focus-within:ring-[#4b8a6d]/10 sm:p-1.5"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setIsEmojiPickerOpen(false);
+          }}
+        >
+          {isEmojiPickerOpen ? (
+            <div className="absolute bottom-full left-0 z-30 mb-2 shadow-[0_12px_36px_rgba(20,50,35,0.18)]" onMouseDown={(event) => event.preventDefault()}>
+              <EmojiPicker onEmojiClick={insertEmoji} />
+            </div>
+          ) : null}
           <label className="inline-flex size-10 shrink-0 cursor-pointer items-center justify-center text-[#557263] hover:bg-[#edf4ef]" aria-label="Attach image or video">
             <Paperclip size={17} aria-hidden="true" />
             <input type="file" className="sr-only" accept="image/jpeg,image/png,image/webp,video/mp4" disabled={isAiGenerating || isUploadingMedia} onChange={(event) => { handleMediaSelect(event.currentTarget.files?.[0]); event.currentTarget.value = ""; }} />
@@ -687,8 +728,12 @@ export function ChatConversation({
             value={draft}
             disabled={isAiGenerating}
             onChange={(event) => {
+              draftSelectionRef.current = { start: event.target.selectionStart, end: event.target.selectionEnd };
               setDraft(event.target.value.slice(0, 5_000));
               updateTyping(event.target.value);
+            }}
+            onSelect={(event) => {
+              draftSelectionRef.current = { start: event.currentTarget.selectionStart, end: event.currentTarget.selectionEnd };
             }}
             onKeyDown={handleComposerKeyDown}
             onBlur={() => updateTyping("")}
@@ -699,6 +744,17 @@ export function ChatConversation({
             className="max-h-24 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-sm leading-5 outline-none placeholder:text-[#96a29a] sm:max-h-36"
           />
           <span className="hidden self-center px-1 text-[10px] text-[#8c9991] sm:block">{draft.length}/5000</span>
+          <button
+            type="button"
+            aria-label={isEmojiPickerOpen ? "Close emoji picker" : "Open emoji picker"}
+            aria-expanded={isEmojiPickerOpen}
+            disabled={isAiGenerating}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => setIsEmojiPickerOpen((open) => !open)}
+            className="inline-flex size-10 shrink-0 items-center justify-center text-[#557263] transition hover:bg-[#edf4ef] focus-visible:outline-2 focus-visible:outline-[#287254] disabled:opacity-50"
+          >
+            <Smile size={19} aria-hidden="true" />
+          </button>
           <button
             type="submit"
             aria-label="Send message"
