@@ -2,12 +2,12 @@
 
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, LoaderCircle, MessageCircle } from "lucide-react";
+import { ArrowRight, LoaderCircle, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChatWorkspace } from "@/components/chat/chat-workspace";
 import { chatQueryKeys } from "@/lib/chat-api";
-import { getCurrentUser, logoutUser } from "@/lib/auth";
+import { getCurrentUser, logoutUser, startGoogleLogin } from "@/lib/auth";
 import { disconnectSocket } from "@/lib/socket";
 
 export function ChatRoute() {
@@ -43,8 +43,8 @@ export function ChatRoute() {
       <main className="grid min-h-dvh place-items-center bg-[#f3f7f3] px-5">
         <section className="w-full max-w-sm border border-[#dce7df] bg-white px-7 py-8 text-center shadow-[0_18px_60px_rgba(22,54,38,0.08)]">
           <MessageCircle className="mx-auto text-[#287254]" size={26} aria-hidden="true" />
-          <h1 className="mt-5 font-heading text-xl font-semibold">Chat isn’t reachable</h1>
-          <p className="mt-2 text-sm leading-6 text-[#748279]">Check your connection and try restoring your session again.</p>
+          <h1 className="mt-5 font-heading text-xl font-semibold">We couldn’t restore your session</h1>
+          <p className="mt-2 text-sm leading-6 text-[#748279]">Try checking again, or sign in with Google to refresh your session.</p>
           <button
             type="button"
             onClick={() => void currentUserQuery.refetch()}
@@ -52,7 +52,13 @@ export function ChatRoute() {
           >
             Try again <ArrowRight size={15} aria-hidden="true" />
           </button>
-          <Link href="/" className="mx-auto mt-4 flex w-fit items-center gap-1 text-xs text-[#748279] hover:text-[#287254]"><ArrowLeft size={13} aria-hidden="true" /> Home</Link>
+          <button
+            type="button"
+            onClick={() => startGoogleLogin(new URL("/chat", window.location.origin).toString())}
+            className="mx-auto mt-4 flex min-h-11 w-fit items-center gap-1 text-sm font-semibold text-[#287254] hover:text-[#205c43]"
+          >
+            Sign in again
+          </button>
         </section>
       </main>
     );

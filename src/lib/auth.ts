@@ -16,6 +16,8 @@ export type AuthUserResponse = {
   avatarUrl?: string | null;
 };
 
+const CURRENT_USER_TIMEOUT_MS = 10_000;
+
 export function normalizeAuthUser(user: AuthUserResponse): AuthUser {
   return {
     id: user.id,
@@ -42,7 +44,9 @@ export function buildGoogleAuthUrl(
 
 export async function getCurrentUser(signal?: AbortSignal): Promise<AuthUser | null> {
   try {
-    const response = await apiClient.get<{ data: { user: AuthUserResponse } }>("/auth/me", { signal });
+    const timeoutSignal = AbortSignal.timeout(CURRENT_USER_TIMEOUT_MS);
+    const requestSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+    const response = await apiClient.get<{ data: { user: AuthUserResponse } }>("/auth/me", { signal: requestSignal });
     return normalizeAuthUser(response.data.data.user);
   } catch (error) {
     if (typeof error === "object" && error && "response" in error) {

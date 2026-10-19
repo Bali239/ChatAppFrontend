@@ -41,8 +41,8 @@ export function SignInScreen() {
       <main className="grid min-h-dvh place-items-center bg-[#f3f7f3] px-5">
         <section className="w-full max-w-sm border border-[#dce7df] bg-white px-7 py-8 text-center shadow-[0_18px_60px_rgba(22,54,38,0.08)]">
           <MessageCircle className="mx-auto text-[#287254]" size={26} aria-hidden="true" />
-          <h1 className="mt-5 font-heading text-xl font-semibold">We couldn’t check your session</h1>
-          <p className="mt-2 text-sm leading-6 text-[#748279]">Reconnect and try again so we can confirm your sign-in status.</p>
+          <h1 className="mt-5 font-heading text-xl font-semibold">We couldn’t restore your session</h1>
+          <p className="mt-2 text-sm leading-6 text-[#748279]">Try checking again, or sign in with Google to refresh your session.</p>
           <button
             type="button"
             onClick={() => void currentUserQuery.refetch()}
@@ -50,7 +50,13 @@ export function SignInScreen() {
           >
             Try again <ArrowRight size={15} aria-hidden="true" />
           </button>
-          <Link href="/" className="mx-auto mt-4 flex w-fit items-center gap-1 text-xs text-[#748279] hover:text-[#287254]"><ArrowLeft size={13} aria-hidden="true" /> Home</Link>
+          <button
+            type="button"
+            onClick={() => startGoogleLogin(new URL("/chat", window.location.origin).toString())}
+            className="mx-auto mt-4 flex min-h-11 w-fit items-center gap-1 text-sm font-semibold text-[#287254] hover:text-[#205c43]"
+          >
+            Sign in again
+          </button>
         </section>
       </main>
     );
