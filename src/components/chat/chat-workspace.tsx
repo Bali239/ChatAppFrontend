@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, LogOut, Menu, MessageCircle, Settings2, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
@@ -9,7 +9,7 @@ import { ChatConversation } from "@/components/chat/chat-conversation";
 import { ProfileDialog } from "@/components/chat/profile-dialog";
 import { ProfileSettingsDialog } from "@/components/chat/profile-settings-dialog";
 import { Avatar } from "@/components/chat/avatar";
-import { createDirectConversation, chatQueryKeys, type ConversationPage, type ConversationRecord, type ProfileUpdatedEvent, type PublicUser } from "@/lib/chat-api";
+import { createDirectConversation, chatQueryKeys, type ConversationRecord, type ProfileUpdatedEvent, type PublicUser } from "@/lib/chat-api";
 import { selectConversation, setSidebarOpen, toggleSidebar } from "@/lib/redux/ui-slice";
 import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
@@ -138,22 +138,6 @@ export function ChatWorkspace({ currentUser, onSignOut }: ChatWorkspaceProps) {
     setSelectedConversation(conversation);
     dispatch(setSidebarOpen(false)); // auto-close sidebar on mobile
 
-    // Optimistically clear unread badge in the conversation list cache
-    queryClient.setQueryData<InfiniteData<ConversationPage, string | null>>(
-      chatQueryKeys.conversations,
-      (current) => {
-        if (!current) return current;
-        return {
-          ...current,
-          pages: current.pages.map((page) => ({
-            ...page,
-            conversations: page.conversations.map((c) =>
-              c.id === conversation.id ? { ...c, unreadCount: 0 } : c
-            ),
-          })),
-        };
-      }
-    );
   };
 
   const handleMessagePerson = async (person: PublicUser) => {

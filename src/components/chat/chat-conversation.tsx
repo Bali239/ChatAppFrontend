@@ -12,6 +12,7 @@ import {
   clearConversation,
   getMessages,
   uploadChatMedia,
+  type ConversationPage,
   type ConversationRecord,
   type MessageHistoryPage,
   type MessageRecord,
@@ -50,6 +51,43 @@ function messageIsAtOrBeforePosition(
   const messageTime = new Date(message.createdAt).getTime();
   const positionTime = new Date(positionAt).getTime();
   return messageTime < positionTime || (messageTime === positionTime && message.id <= positionId);
+}
+
+function isLaterPosition(
+  candidateAt: string | null,
+  candidateId: string | null,
+  currentAt: string | null,
+  currentId: string | null,
+): boolean {
+  if (!candidateAt || !candidateId) return false;
+  if (!currentAt || !currentId) return true;
+  const candidateTime = new Date(candidateAt).getTime();
+  const currentTime = new Date(currentAt).getTime();
+  return candidateTime > currentTime || (candidateTime === currentTime && candidateId > currentId);
+}
+
+function requestReadPosition(
+  socket: ReturnType<typeof connectSocket>,
+  conversationId: string,
+  messageId: string,
+  queryClient: ReturnType<typeof useQueryClient>,
+): void {
+  socket.emit("conversation:read", { conversationId, messageId }, (result: { ok: boolean }) => {
+    if (!result.ok) return;
+    queryClient.setQueryData<InfiniteData<ConversationPage, string | null>>(
+      chatQueryKeys.conversations,
+      (current) => current ? {
+        ...current,
+        pages: current.pages.map((page) => ({
+          ...page,
+          conversations: page.conversations.map((conversation) =>
+            conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation,
+          ),
+        })),
+      } : current,
+    );
+    void queryClient.invalidateQueries({ queryKey: chatQueryKeys.conversations });
+  });
 }
 
 function mergeMessage(
@@ -188,7 +226,7 @@ export function ChatConversation({
           requestAnimationFrame(() => {
             endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
           });
-          socket.emit("conversation:read", { conversationId: conversation.id, messageId: message.id });
+          requestReadPosition(socket, conversation.id, message.id, queryClient);
         } else {
           setNewMessageCount((count) => count + 1);
         }
@@ -238,8 +276,18 @@ export function ChatConversation({
                 lastDeliveredMessageAt: null,
                 lastDeliveredMessageId: null,
               }),
-              lastReadAt: receipt.readAt,
-              lastReadMessageId: receipt.messageId,
+              lastReadAt: isLaterPosition(
+                receipt.readAt,
+                receipt.messageId,
+                pages[0].receiptState?.lastReadAt ?? null,
+                pages[0].receiptState?.lastReadMessageId ?? null,
+              ) ? receipt.readAt : pages[0].receiptState?.lastReadAt ?? null,
+              lastReadMessageId: isLaterPosition(
+                receipt.readAt,
+                receipt.messageId,
+                pages[0].receiptState?.lastReadAt ?? null,
+                pages[0].receiptState?.lastReadMessageId ?? null,
+              ) ? receipt.messageId : pages[0].receiptState?.lastReadMessageId ?? null,
             },
           };
           return { ...current, pages };
@@ -265,9 +313,24 @@ export function ChatConversation({
                 lastReadAt: null,
                 lastReadMessageId: null,
               }),
-              lastDeliveredAt: receipt.deliveredAt,
-              lastDeliveredMessageAt: receipt.messageCreatedAt,
-              lastDeliveredMessageId: receipt.messageId,
+              lastDeliveredAt: isLaterPosition(
+                receipt.messageCreatedAt,
+                receipt.messageId,
+                pages[0].receiptState?.lastDeliveredMessageAt ?? null,
+                pages[0].receiptState?.lastDeliveredMessageId ?? null,
+              ) ? receipt.deliveredAt : pages[0].receiptState?.lastDeliveredAt ?? null,
+              lastDeliveredMessageAt: isLaterPosition(
+                receipt.messageCreatedAt,
+                receipt.messageId,
+                pages[0].receiptState?.lastDeliveredMessageAt ?? null,
+                pages[0].receiptState?.lastDeliveredMessageId ?? null,
+              ) ? receipt.messageCreatedAt : pages[0].receiptState?.lastDeliveredMessageAt ?? null,
+              lastDeliveredMessageId: isLaterPosition(
+                receipt.messageCreatedAt,
+                receipt.messageId,
+                pages[0].receiptState?.lastDeliveredMessageAt ?? null,
+                pages[0].receiptState?.lastDeliveredMessageId ?? null,
+              ) ? receipt.messageId : pages[0].receiptState?.lastDeliveredMessageId ?? null,
             },
           };
           return { ...current, pages };
@@ -338,38 +401,55 @@ export function ChatConversation({
 
     const latestMessage = loadedMessages.at(-1);
     if (latestMessage && nearBottomRef.current) {
-      socket.emit("conversation:read", {
-        conversationId: conversation.id,
-        messageId: latestMessage.id,
-      });
+      requestReadPosition(socket, conversation.id, latestMessage.id, queryClient);
     }
-  }, [conversation.id, currentUser.id, historyDataUpdatedAt, historyIsSuccess, historyPages]);
+  }, [conversation.id, currentUser.id, historyDataUpdatedAt, historyIsSuccess, historyPages, queryClient]);
 
   const handleHistoryScroll = (event: UIEvent<HTMLDivElement>) => {
     const element = event.currentTarget;
     const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    const wasNearBottom = nearBottomRef.current;
     nearBottomRef.current = distanceFromBottom < 120;
     if (nearBottomRef.current) setNewMessageCount(0);
+    if (!wasNearBottom && nearBottomRef.current) {
+      const latestMessage = messages.at(-1);
+      if (latestMessage) requestReadPosition(connectSocket(), conversation.id, latestMessage.id, queryClient);
+    }
 
-    if (element.scrollTop > 100) paginationLockedRef.current = false;
     if (
       element.scrollTop < 80 &&
       !paginationLockedRef.current &&
       historyQuery.hasNextPage &&
       !historyQuery.isFetchingNextPage
     ) {
-      const beforeHeight = element.scrollHeight;
-      const beforeTop = element.scrollTop;
-      paginationLockedRef.current = true;
-      void historyQuery.fetchNextPage().then(() => {
-        requestAnimationFrame(() => {
-          const container = scrollRef.current;
-          if (container) container.scrollTop = beforeTop + container.scrollHeight - beforeHeight;
-        });
-      }).catch(() => {
+      loadOlderMessages();
+    }
+  };
+
+  const loadOlderMessages = () => {
+    const container = scrollRef.current;
+    if (
+      !container ||
+      paginationLockedRef.current ||
+      !historyQuery.hasNextPage ||
+      historyQuery.isFetchingNextPage
+    ) return;
+
+    const beforeHeight = container.scrollHeight;
+    const beforeTop = container.scrollTop;
+    paginationLockedRef.current = true;
+    void historyQuery.fetchNextPage().then(() => {
+      requestAnimationFrame(() => {
+        const currentContainer = scrollRef.current;
+        if (currentContainer) {
+          currentContainer.scrollTop = beforeTop + currentContainer.scrollHeight - beforeHeight;
+        }
+        // Unlock even when the fetched page is short or empty.
         paginationLockedRef.current = false;
       });
-    }
+    }).catch(() => {
+      paginationLockedRef.current = false;
+    });
   };
 
   const sendMessage = (content: string, clientMessageId = crypto.randomUUID().replaceAll("-", "_")) => {
@@ -603,14 +683,15 @@ export function ChatConversation({
           <button
             type="button"
             disabled={historyQuery.isFetchingNextPage}
-            onClick={() => {
-              paginationLockedRef.current = false;
-              scrollRef.current?.scrollTo({ top: 0 });
-            }}
+            onClick={loadOlderMessages}
             className="mx-auto mb-4 inline-flex min-h-8 items-center gap-1.5 px-3 text-xs font-semibold text-[#51725e] hover:bg-white/70 disabled:opacity-60"
           >
             {historyQuery.isFetchingNextPage ? <LoaderCircle size={14} className="animate-spin" aria-hidden="true" /> : <ChevronUp size={14} aria-hidden="true" />}
-            Load older messages
+            {historyQuery.isFetchingNextPage
+              ? "Loading older messages…"
+              : historyQuery.isFetchNextPageError
+                ? "Couldn’t load older messages · Retry"
+                : "Load older messages"}
           </button>
         ) : null}
 
