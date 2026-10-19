@@ -121,6 +121,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  a,
+  button:enabled {
+    cursor: pointer;
+  }
   body {
     @apply bg-background text-foreground;
     min-height: 100dvh;
